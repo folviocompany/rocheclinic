@@ -1,5 +1,5 @@
 import { ShieldCheck } from 'lucide-react';
-import { requireMember } from '@/lib/auth';
+import { requireMember } from '@/features/auth/data-access';
 import { ProcedureManager } from './procedure-manager';
 
 export default async function ProceduresPage() {

@@ -9,20 +9,15 @@ import { ArrowDownRight, ArrowUpRight, CalendarRange, CircleDollarSign, Clock3, 
 import { Button } from '@/components/ui/button';
 import { expenseFormSchema, formatMoney, paymentMethods, revenueFormSchema, type ExpenseFormValues, type RevenueFormValues } from '@/features/finances/schema';
 import { registerExpense, registerRevenue } from './actions';
+import type { FinancialDashboardViewModel } from '@/features/finances/dashboard';
 
-type DashboardData = {
-  metrics: { billed: number; received: number; pending: number; expensesIncurred: number; expensesPaid: number; competenceResult: number; cashResult: number };
-  daily: { label: string; revenue: number; expense: number }[];
-  professionals: { name: string; revenue: number; received: number; expense: number }[];
-  transactions: { id: string; type: 'revenue' | 'payment' | 'expense'; description: string; date: string; amount: number; status: string; professional: string }[];
-};
 type Option = { id: string; name: string };
 const today = new Date().toISOString().slice(0, 10);
 const emptyRevenue: RevenueFormValues = { description: '', amount: '', serviceDate: today, dueDate: today, clientId: '', procedureId: '', initialPayment: '0', paymentMethod: '', paidAt: '' };
 const emptyExpense: ExpenseFormValues = { description: '', category: '', amount: '', competenceDate: today, dueDate: today, responsibility: 'individual', status: 'pending', paidAt: '', paymentMethod: '', notes: '' };
 const methodLabels: Record<string, string> = { pix: 'PIX', cash: 'Dinheiro', debit_card: 'Cartão de débito', credit_card: 'Cartão de crédito', transfer: 'Transferência', other: 'Outros' };
 
-export function FinancialDashboard({ data, month, regime, clients, procedures }: { data: DashboardData; month: string; regime: 'competence' | 'cash'; clients: Option[]; procedures: Option[] }) {
+export function FinancialDashboard({ data, month, regime, clients, procedures }: { data: FinancialDashboardViewModel; month: string; regime: 'competence' | 'cash'; clients: Option[]; procedures: Option[] }) {
   const router = useRouter();
   const [modal, setModal] = useState<'revenue' | 'expense' | null>(null);
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
@@ -47,7 +42,7 @@ export function FinancialDashboard({ data, month, regime, clients, procedures }:
         if (result.fieldErrors) Object.entries(result.fieldErrors).forEach(([field, message]) => revenueForm.setError(field as keyof RevenueFormValues, { message }));
         setNotice({ kind: 'error', text: result.message }); return;
       }
-      setModal(null); setNotice({ kind: 'success', text: result.message }); router.refresh();
+      setModal(null); setNotice({ kind: 'success', text: result.message });
     });
   }
   function submitExpense(values: ExpenseFormValues) {
@@ -57,7 +52,7 @@ export function FinancialDashboard({ data, month, regime, clients, procedures }:
         if (result.fieldErrors) Object.entries(result.fieldErrors).forEach(([field, message]) => expenseForm.setError(field as keyof ExpenseFormValues, { message }));
         setNotice({ kind: 'error', text: result.message }); return;
       }
-      setModal(null); setNotice({ kind: 'success', text: result.message }); router.refresh();
+      setModal(null); setNotice({ kind: 'success', text: result.message });
     });
   }
 

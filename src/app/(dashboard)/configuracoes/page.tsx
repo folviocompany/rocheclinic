@@ -1,4 +1,4 @@
-import { requireMember } from '@/lib/auth';
+import { requireMember } from '@/features/auth/data-access';
 import { ShieldCheck } from 'lucide-react';
 export default async function SettingsPage() {
   const { user, profile, professional, supabase } = await requireMember();

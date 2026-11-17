@@ -4,7 +4,20 @@
 
 Next.js App Router e TypeScript strict. Server Components para leituras; Server Actions para login/logout, com validação Zod. Supabase Auth + PostgreSQL com RLS; sem Prisma. Tailwind CSS e componentes locais compatíveis com shadcn/ui (Button com Radix Slot/CVA), Lucide para ícones. Recharts, React Hook Form e date-fns serão adicionados nas fases que os utilizarem. Fontes DM Sans e Cormorant Garamond servidas localmente via Fontsource, sem requisições a provedores de fontes durante o uso.
 
-O proxy renova cookies; não é a única barreira de segurança. Cada página protegida chama `requireMember`, que verifica usuário no Auth e perfil ativo no banco. O layout também verifica acesso. Futuras ações devem repetir essa autorização e validar entrada. Nenhuma chave administrativa é utilizada pela aplicação.
+O proxy renova cookies; não é a única barreira de segurança. A camada de acesso em `src/features/auth/data-access.ts` centraliza `requireMember`, valida as claims do token e busca perfil e profissional em paralelo, selecionando somente os campos necessários. Páginas e Server Actions protegidas chamam essa camada perto da leitura ou mutação. Futuras ações devem repetir essa autorização e validar entrada. Nenhuma chave administrativa é utilizada pela aplicação.
+
+## Desempenho e experiência de navegação
+
+- Rotas privadas são dinâmicas porque dependem da sessão e de dados por usuária. O `loading.tsx` do grupo de dashboard fornece feedback imediato e permite streaming/prefetch parcial.
+- Server Actions invalidam a rota afetada com `revalidatePath`; componentes clientes não devem chamar `router.refresh()` para a mesma mutação, evitando uma segunda renderização completa.
+- Consultas independentes devem usar `Promise.all`, selecionar colunas explícitas e permanecer na camada da feature responsável.
+- Dashboards que dependem de várias tabelas usam funções SQL de leitura com `SECURITY INVOKER`, reduzindo viagens de rede sem contornar RLS. A transformação do retorno em métricas fica em função pura e testável na feature.
+- O proxy não processa páginas públicas nem arquivos estáticos. Autorização real permanece no DAL e nas políticas RLS.
+- Alterações de desempenho exigem teste de regressão em `tests/performance.test.mjs`, além da suíte funcional e do build.
+
+## Estratégia de testes
+
+O projeto segue ciclos vermelho-verde-refatoração. Regras puras ficam em testes unitários; integridade, RLS e funções SQL são exercitadas no PostgreSQL embarcado; contratos arquiteturais importantes têm testes de regressão. Toda mudança deve passar por `npm test`, `npm run typecheck` e `npm run build` antes de ser integrada.
 
 ## Modelo já criado
 
@@ -24,6 +37,10 @@ Fase 2 parcial: `clients` compartilhados e preferências de contato estão imple
 Fase financeira em andamento: `receivables`, `payments` e `expenses` estão implementados. Recebível não é pagamento; pagamentos parciais são transações relacionadas e não duplicam faturamento. O dashboard consolida caixa/competência e gastos individuais/compartilhados. Permanecem categorias administráveis, recorrência, edição financeira documentada, estorno e conciliações adicionais.
 
 Dashboard financeiro: indicadores e gráficos mensais reais por caixa/competência estão implementados. Permanecem relatórios detalhados e CSV seguro.
+
+A leitura mensal do Financeiro é consolidada por `get_financial_dashboard`: uma única chamada retorna somente as colunas necessárias de recebíveis, pagamentos, despesas, clientes, procedimentos e profissionais. A função respeita a sessão e as políticas RLS; `src/features/finances/data-access.ts` valida o contrato retornado e `dashboard.ts` calcula o modelo de apresentação sem depender de React ou Supabase.
+
+Durante a implantação da migration, `legacy-data-access.ts` mantém compatibilidade se o PostgREST ainda não reconhecer a função. Esse fallback existe apenas para evitar indisponibilidade entre deploy e migration e deve ser removido depois da confirmação em produção.
 
 Fase 5: `return_reminders`, participações societárias versionadas, `profit_distributions`, reservas e ajustes. Percentuais iniciais 50/50; estimativas gerenciais, sem transferências bancárias. Retornos clínicos sempre dependem da confirmação profissional. WhatsApp somente por link e contato autorizado.
 

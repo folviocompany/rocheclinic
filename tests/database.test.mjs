@@ -23,6 +23,7 @@ before(async () => {
   await db.exec(await readFile(new URL('../supabase/migrations/202611110001_foundation.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611140001_clients.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611150001_financial_foundation.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202611160001_financial_dashboard_rpc.sql', import.meta.url), 'utf8'));
   await db.query('insert into auth.users (id) values ($1), ($2), ($3)', [ester, izabela, outsider]);
   await db.query("insert into profiles (id, display_name) values ($1, 'Profissional A'), ($2, 'Profissional B')", [ester, izabela]);
   await db.query("insert into professionals (id, user_id, specialty) values ($1, $2, 'Área A'), ($3, $4, 'Área B')", [p1, ester, p2, izabela]);
@@ -119,4 +120,31 @@ test('não permite apagar lançamentos financeiros', async () => {
   await assert.rejects(asUser(ester, 'delete from receivables'), /permission denied/);
   await assert.rejects(asUser(ester, 'delete from payments'), /permission denied/);
   await assert.rejects(asUser(ester, 'delete from expenses'), /permission denied/);
+});
+
+test('dashboard financeiro é consolidado em uma única função segura', async () => {
+  const result = await asUser(
+    ester,
+    "select get_financial_dashboard('2026-11-01', '2026-11-30') as dashboard",
+  );
+  const dashboard = result.rows[0].dashboard;
+
+  assert.ok(Array.isArray(dashboard.receivables));
+  assert.ok(Array.isArray(dashboard.cashPayments));
+  assert.ok(Array.isArray(dashboard.expenses));
+  assert.ok(Array.isArray(dashboard.clients));
+  assert.ok(Array.isArray(dashboard.procedures));
+  assert.ok(dashboard.receivables.some((item) => item.description === 'Atendimento teste'));
+  assert.ok(dashboard.procedures.length > 0);
+  assert.ok(dashboard.procedures.every((item) => item.professional_id === p1));
+});
+
+test('função consolidada não vaza dados para conta sem vínculo', async () => {
+  const result = await asUser(
+    outsider,
+    "select get_financial_dashboard('2026-11-01', '2026-11-30') as dashboard",
+  );
+  const dashboard = result.rows[0].dashboard;
+
+  for (const rows of Object.values(dashboard)) assert.deepEqual(rows, []);
 });

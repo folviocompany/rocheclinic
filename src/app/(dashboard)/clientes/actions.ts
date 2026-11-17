@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { requireMember } from '@/lib/auth';
+import { requireMember } from '@/features/auth/data-access';
 import { clientFormSchema, normalizePhone, type ClientFormValues } from '@/features/clients/schema';
 
 export type ClientActionResult = {

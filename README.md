@@ -11,7 +11,7 @@ Sem as variáveis, a tela de login mostra configuração pendente e bloqueia o e
 ## Configurar Supabase
 
 1. Crie um projeto Supabase privado administrativamente. Em Authentication, desative **Allow new users to sign up**, login anônimo e provedores não utilizados. Use e-mail e senha. Configure proteção contra tentativas abusivas e limites no serviço Auth antes da produção.
-2. Execute `supabase/migrations/202611110001_foundation.sql` pelo SQL Editor em um banco novo. Nas evoluções, use Supabase CLI com `supabase link --project-ref ...` e `supabase db push`; não reaplique migrations já executadas.
+2. Em um banco novo, aplique todas as migrations de `supabase/migrations` na ordem do nome. Nas evoluções, use Supabase CLI com `supabase link --project-ref ...` e `supabase db push`; não reaplique migrations já executadas.
 3. Preencha `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` com a URL e a chave publicável do projeto. Nunca use `service_role` ou chave secreta nessas variáveis.
 4. Crie as duas contas em Authentication → Users pelo processo administrativo. Defina senhas fortes e compartilhe-as por canal privado; nenhuma senha deve entrar no repositório. Este MVP não implementa convite nem recuperação de senha na interface: o suporte de acesso é administrativo.
 5. Adapte e execute uma vez `supabase/admin/provision-professional.sql`: substitua os dois UUIDs reais de Auth. O script cria ou atualiza Ester e Dra. Izabela de forma transacional. Não existe cadastro público ou criação automática de perfil por metadados do usuário.
