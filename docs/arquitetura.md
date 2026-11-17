@@ -4,7 +4,19 @@
 
 Next.js App Router e TypeScript strict. Server Components para leituras; Server Actions para login/logout, com validação Zod. Supabase Auth + PostgreSQL com RLS; sem Prisma. Tailwind CSS e componentes locais compatíveis com shadcn/ui (Button com Radix Slot/CVA), Lucide para ícones. Recharts, React Hook Form e date-fns serão adicionados nas fases que os utilizarem. Fontes DM Sans e Cormorant Garamond servidas localmente via Fontsource, sem requisições a provedores de fontes durante o uso.
 
-O proxy renova cookies; não é a única barreira de segurança. Cada página protegida chama `requireMember`, que verifica usuário no Auth e perfil ativo no banco. O layout também verifica acesso. Futuras ações devem repetir essa autorização e validar entrada. Nenhuma chave administrativa é utilizada pela aplicação.
+O proxy renova cookies; não é a única barreira de segurança. A camada de acesso em `src/features/auth/data-access.ts` centraliza `requireMember`, valida as claims do token e busca perfil e profissional em paralelo, selecionando somente os campos necessários. Páginas e Server Actions protegidas chamam essa camada perto da leitura ou mutação. Futuras ações devem repetir essa autorização e validar entrada. Nenhuma chave administrativa é utilizada pela aplicação.
+
+## Desempenho e experiência de navegação
+
+- Rotas privadas são dinâmicas porque dependem da sessão e de dados por usuária. O `loading.tsx` do grupo de dashboard fornece feedback imediato e permite streaming/prefetch parcial.
+- Server Actions invalidam a rota afetada com `revalidatePath`; componentes clientes não devem chamar `router.refresh()` para a mesma mutação, evitando uma segunda renderização completa.
+- Consultas independentes devem usar `Promise.all`, selecionar colunas explícitas e permanecer na camada da feature responsável.
+- O proxy não processa páginas públicas nem arquivos estáticos. Autorização real permanece no DAL e nas políticas RLS.
+- Alterações de desempenho exigem teste de regressão em `tests/performance.test.mjs`, além da suíte funcional e do build.
+
+## Estratégia de testes
+
+O projeto segue ciclos vermelho-verde-refatoração. Regras puras ficam em testes unitários; integridade, RLS e funções SQL são exercitadas no PostgreSQL embarcado; contratos arquiteturais importantes têm testes de regressão. Toda mudança deve passar por `npm test`, `npm run typecheck` e `npm run build` antes de ser integrada.
 
 ## Modelo já criado
 

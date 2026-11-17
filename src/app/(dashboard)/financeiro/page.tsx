@@ -1,6 +1,6 @@
 import { endOfMonth, format, isMatch, parseISO } from 'date-fns';
 import { Landmark } from 'lucide-react';
-import { requireMember } from '@/lib/auth';
+import { requireMember } from '@/features/auth/data-access';
 import { FinancialDashboard } from './financial-dashboard';
 
 function currentManausMonth() {

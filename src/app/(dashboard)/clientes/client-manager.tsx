@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Archive, CalendarDays, Edit3, LoaderCircle, MessageCircle, Plus, Search, UserRound, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { clientFormSchema, formatPhone, type ClientFormValues } from '@/features/clients/schema';
 import { saveClient, setClientActive } from './actions';
@@ -18,7 +17,6 @@ function toFormValues(client: Client): ClientFormValues {
 }
 
 export function ClientManager({ clients, professionals }: { clients: Client[]; professionals: ProfessionalOption[] }) {
-  const router = useRouter();
   const [query, setQuery] = useState('');
   const [professionalFilter, setProfessionalFilter] = useState('');
   const [editing, setEditing] = useState<Client | null | 'new'>(null);
@@ -53,7 +51,6 @@ export function ClientManager({ clients, professionals }: { clients: Client[]; p
       }
       setEditing(null);
       setNotice({ kind: 'success', text: result.message });
-      router.refresh();
     });
   }
 
@@ -62,7 +59,6 @@ export function ClientManager({ clients, professionals }: { clients: Client[]; p
     startTransition(async () => {
       const result = await setClientActive(client.id, !client.active);
       setNotice({ kind: result.ok ? 'success' : 'error', text: result.message });
-      if (result.ok) router.refresh();
     });
   }
 

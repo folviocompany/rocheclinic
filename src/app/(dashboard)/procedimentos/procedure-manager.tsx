@@ -4,7 +4,6 @@ import { useEffect, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Clock3, Edit3, LoaderCircle, Plus, RotateCcw, Sparkles, ToggleLeft, ToggleRight, X } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { centsToPriceInput, procedureFormSchema, type ProcedureFormValues } from '@/features/procedures/schema';
 import { saveProcedure, setProcedureActive } from './actions';
@@ -32,7 +31,6 @@ function toFormValues(procedure: Procedure): ProcedureFormValues {
 }
 
 export function ProcedureManager({ procedures }: { procedures: Procedure[] }) {
-  const router = useRouter();
   const [editing, setEditing] = useState<Procedure | null | 'new'>(null);
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -58,7 +56,6 @@ export function ProcedureManager({ procedures }: { procedures: Procedure[] }) {
       }
       setEditing(null);
       setNotice({ kind: 'success', text: result.message });
-      router.refresh();
     });
   }
 
@@ -67,7 +64,6 @@ export function ProcedureManager({ procedures }: { procedures: Procedure[] }) {
     startTransition(async () => {
       const result = await setProcedureActive(procedure.id, !procedure.active);
       setNotice({ kind: result.ok ? 'success' : 'error', text: result.message });
-      if (result.ok) router.refresh();
     });
   }
 

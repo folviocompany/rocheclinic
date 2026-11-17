@@ -47,7 +47,7 @@ export function FinancialDashboard({ data, month, regime, clients, procedures }:
         if (result.fieldErrors) Object.entries(result.fieldErrors).forEach(([field, message]) => revenueForm.setError(field as keyof RevenueFormValues, { message }));
         setNotice({ kind: 'error', text: result.message }); return;
       }
-      setModal(null); setNotice({ kind: 'success', text: result.message }); router.refresh();
+      setModal(null); setNotice({ kind: 'success', text: result.message });
     });
   }
   function submitExpense(values: ExpenseFormValues) {
@@ -57,7 +57,7 @@ export function FinancialDashboard({ data, month, regime, clients, procedures }:
         if (result.fieldErrors) Object.entries(result.fieldErrors).forEach(([field, message]) => expenseForm.setError(field as keyof ExpenseFormValues, { message }));
         setNotice({ kind: 'error', text: result.message }); return;
       }
-      setModal(null); setNotice({ kind: 'success', text: result.message }); router.refresh();
+      setModal(null); setNotice({ kind: 'success', text: result.message });
     });
   }
 

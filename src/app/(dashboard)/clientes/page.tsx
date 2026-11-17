@@ -1,5 +1,5 @@
 import { UsersRound } from 'lucide-react';
-import { requireMember } from '@/lib/auth';
+import { requireMember } from '@/features/auth/data-access';
 import { ClientManager } from './client-manager';
 
 export default async function ClientsPage() {
