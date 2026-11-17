@@ -1,12 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { expenseFormSchema, expenseSettlementFormSchema, financialCancellationSchema, moneyToCents, paymentFormSchema, revenueFormSchema } from '../src/features/finances/schema.ts';
+import { expenseFormSchema, expenseSettlementFormSchema, financialCancellationSchema, financialReversalSchema, moneyToCents, paymentFormSchema, revenueFormSchema } from '../src/features/finances/schema.ts';
 
 const revenue = { description: 'Atendimento', amount: '300,00', serviceDate: '2026-11-15', dueDate: '2026-11-15', clientId: '', procedureId: '', initialPayment: '100,00', paymentMethod: 'pix', paidAt: '2026-11-15' };
 const expense = { description: 'Material', category: 'Insumos', amount: '50,00', competenceDate: '2026-11-01', dueDate: '2026-11-10', responsibility: 'individual', status: 'pending', paidAt: '', paymentMethod: '', notes: '' };
 const payment = { receivableId: '30000000-0000-4000-8000-000000000001', amount: '125,50', paidAt: '2026-11-16', paymentMethod: 'pix', notes: '' };
 const settlement = { expenseId: '40000000-0000-4000-8000-000000000001', paidAt: '2026-11-17', paymentMethod: 'transfer' };
 const cancellation = { entryId: '50000000-0000-4000-8000-000000000001', entryType: 'expense', reason: 'Lançamento duplicado' };
+const reversal = { entryId: '60000000-0000-4000-8000-000000000001', entryType: 'receivable', reversalType: 'correction', effectiveDate: '2026-11-17', reason: 'Pagamento registrado por engano' };
 
 test('converte valores financeiros para centavos', () => {
   assert.equal(moneyToCents('300,00'), 30000);
@@ -44,4 +45,11 @@ test('cancelamento financeiro exige lançamento, tipo e justificativa', () => {
   assert.equal(financialCancellationSchema.safeParse(cancellation).success, true);
   assert.equal(financialCancellationSchema.safeParse({ ...cancellation, reason: 'x' }).success, false);
   assert.equal(financialCancellationSchema.safeParse({ ...cancellation, entryType: 'other' }).success, false);
+});
+
+test('estorno exige tipo operacional, data e justificativa', () => {
+  assert.equal(financialReversalSchema.safeParse(reversal).success, true);
+  assert.equal(financialReversalSchema.safeParse({ ...reversal, reversalType: 'refund' }).success, true);
+  assert.equal(financialReversalSchema.safeParse({ ...reversal, reversalType: 'other' }).success, false);
+  assert.equal(financialReversalSchema.safeParse({ ...reversal, reason: 'x' }).success, false);
 });

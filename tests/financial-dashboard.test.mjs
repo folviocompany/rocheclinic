@@ -22,6 +22,9 @@ const payload = {
   openExpenses: [
     { id: 'e1', description: 'Material', category: 'Insumos', amount_cents: 5000, due_date: '2026-11-10', responsibility: 'individual', status: 'pending' },
   ],
+  cashReversals: [],
+  reversibleEntries: [],
+  reopenableEntries: [],
 };
 
 test('calcula faturamento, caixa e saldo parcial sem duplicidade', () => {
@@ -64,4 +67,11 @@ test('expõe somente o saldo real das contas abertas para recebimento', () => {
 test('expõe as contas abertas que podem ser pagas pela usuária', () => {
   const result = buildFinancialDashboard(payload, 'competence', '2026-11-30');
   assert.deepEqual(result.openExpenses, payload.openExpenses);
+});
+
+test('devoluções reais geram movimento oposto no caixa', () => {
+  const reversed = buildFinancialDashboard({ ...payload, cashReversals: [{ id: 'rev1', target_type: 'receivable', target_id: 'r1', amount_cents: 10000, effective_date: '2026-11-20', reversal_type: 'refund', description: 'Atendimento', professional_id: 'p1', responsibility: null, expense_professional_id: null }] }, 'cash', '2026-11-30');
+  assert.equal(reversed.metrics.received, 0);
+  assert.equal(reversed.daily[19].revenue, -10000);
+  assert.equal(reversed.transactions[0].type, 'reversal');
 });

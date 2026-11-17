@@ -6,6 +6,7 @@ const typeLabels: Record<Transaction['type'], string> = {
   revenue: 'Receita',
   payment: 'Recebimento',
   expense: 'Gasto',
+  reversal: 'Estorno',
 };
 
 function safeCell(value: string) {
