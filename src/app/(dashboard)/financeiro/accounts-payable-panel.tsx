@@ -9,9 +9,11 @@ import type { OpenExpenseRow } from '@/features/finances/dashboard';
 import { expenseSettlementFormSchema, formatMoney, type ExpenseSettlementFormValues } from '@/features/finances/schema';
 import { settleExpense } from './actions';
 import { FinancialAccountPanel, FinancialAccountRow, FinancialField, FinancialModal, FinancialPaymentMethodOptions, financialToday, formatFinancialDate } from './financial-account-ui';
+import { FinancialCancellationModal, type FinancialCancellationTarget } from './financial-cancellation-modal';
 
 export function AccountsPayablePanel({ items }: { items: OpenExpenseRow[] }) {
   const [selected, setSelected] = useState<OpenExpenseRow | null>(null);
+  const [cancellation, setCancellation] = useState<FinancialCancellationTarget | null>(null);
   const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
   const [pending, startTransition] = useTransition();
   const form = useForm<ExpenseSettlementFormValues>({
@@ -50,6 +52,8 @@ export function AccountsPayablePanel({ items }: { items: OpenExpenseRow[] }) {
         values={<><strong>{formatMoney(item.amount_cents)}</strong><span>{item.status === 'planned' ? 'prevista' : 'pendente'}</span></>}
         actionLabel="Registrar pagamento"
         onAction={() => openSettlement(item)}
+        secondaryActionLabel="Cancelar"
+        onSecondaryAction={() => setCancellation({ id: item.id, type: 'expense', description: item.description })}
       />)}
     </FinancialAccountPanel>
 
@@ -65,5 +69,6 @@ export function AccountsPayablePanel({ items }: { items: OpenExpenseRow[] }) {
         <div className="modal-actions"><Button type="button" variant="outline" onClick={() => setSelected(null)} disabled={pending}>Cancelar</Button><Button type="submit" disabled={pending}>{pending ? <><LoaderCircle className="spin" size={17}/> Salvando…</> : 'Confirmar pagamento'}</Button></div>
       </form>
     </FinancialModal>}
+    {cancellation && <FinancialCancellationModal target={cancellation} onClose={() => setCancellation(null)} onSuccess={(message) => { setCancellation(null); setNotice({ kind: 'success', text: message }); }} />}
   </>;
 }

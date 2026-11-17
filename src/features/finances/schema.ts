@@ -54,10 +54,17 @@ export const expenseSettlementFormSchema = z.object({
   paymentMethod: z.enum(paymentMethods, 'Informe a forma de pagamento.'),
 });
 
+export const financialCancellationSchema = z.object({
+  entryId: z.uuid('Selecione um lançamento.'),
+  entryType: z.enum(['receivable', 'expense']),
+  reason: z.string().trim().min(3, 'Explique o motivo do cancelamento.').max(300),
+});
+
 export type RevenueFormValues = z.infer<typeof revenueFormSchema>;
 export type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
 export type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 export type ExpenseSettlementFormValues = z.infer<typeof expenseSettlementFormSchema>;
+export type FinancialCancellationValues = z.infer<typeof financialCancellationSchema>;
 
 export function moneyToCents(value: string) { return Math.round(Number((value || '0').replace(',', '.')) * 100); }
 export function formatMoney(cents: number) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100); }

@@ -41,7 +41,7 @@ export function FinancialAccountPanel({ overline, title, count, emptyText, notic
   </section>;
 }
 
-export function FinancialAccountRow({ icon, iconClassName = '', overdue, title, detail, values, actionLabel, onAction }: {
+export function FinancialAccountRow({ icon, iconClassName = '', overdue, title, detail, values, actionLabel, onAction, secondaryActionLabel, onSecondaryAction }: {
   icon: ReactNode;
   iconClassName?: string;
   overdue: boolean;
@@ -50,12 +50,14 @@ export function FinancialAccountRow({ icon, iconClassName = '', overdue, title, 
   values: ReactNode;
   actionLabel: string;
   onAction: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
 }) {
   return <article className="receivable-row">
     <span className={`receivable-icon ${iconClassName} ${overdue ? 'overdue' : ''}`.trim()}>{icon}</span>
     <div className="receivable-main"><strong>{title}</strong><small>{detail}</small></div>
     <div className="receivable-values">{values}</div>
-    <Button variant="outline" onClick={onAction}>{actionLabel}</Button>
+    <div className="financial-account-actions"><Button variant="outline" onClick={onAction}>{actionLabel}</Button>{secondaryActionLabel && onSecondaryAction && <Button variant="outline" onClick={onSecondaryAction}>{secondaryActionLabel}</Button>}</div>
   </article>;
 }
 
