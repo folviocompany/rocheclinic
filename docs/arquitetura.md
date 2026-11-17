@@ -11,6 +11,7 @@ O proxy renova cookies; não é a única barreira de segurança. A camada de ace
 - Rotas privadas são dinâmicas porque dependem da sessão e de dados por usuária. O `loading.tsx` do grupo de dashboard fornece feedback imediato e permite streaming/prefetch parcial.
 - Server Actions invalidam a rota afetada com `revalidatePath`; componentes clientes não devem chamar `router.refresh()` para a mesma mutação, evitando uma segunda renderização completa.
 - Consultas independentes devem usar `Promise.all`, selecionar colunas explícitas e permanecer na camada da feature responsável.
+- Dashboards que dependem de várias tabelas usam funções SQL de leitura com `SECURITY INVOKER`, reduzindo viagens de rede sem contornar RLS. A transformação do retorno em métricas fica em função pura e testável na feature.
 - O proxy não processa páginas públicas nem arquivos estáticos. Autorização real permanece no DAL e nas políticas RLS.
 - Alterações de desempenho exigem teste de regressão em `tests/performance.test.mjs`, além da suíte funcional e do build.
 
@@ -36,6 +37,10 @@ Fase 2 parcial: `clients` compartilhados e preferências de contato estão imple
 Fase financeira em andamento: `receivables`, `payments` e `expenses` estão implementados. Recebível não é pagamento; pagamentos parciais são transações relacionadas e não duplicam faturamento. O dashboard consolida caixa/competência e gastos individuais/compartilhados. Permanecem categorias administráveis, recorrência, edição financeira documentada, estorno e conciliações adicionais.
 
 Dashboard financeiro: indicadores e gráficos mensais reais por caixa/competência estão implementados. Permanecem relatórios detalhados e CSV seguro.
+
+A leitura mensal do Financeiro é consolidada por `get_financial_dashboard`: uma única chamada retorna somente as colunas necessárias de recebíveis, pagamentos, despesas, clientes, procedimentos e profissionais. A função respeita a sessão e as políticas RLS; `src/features/finances/data-access.ts` valida o contrato retornado e `dashboard.ts` calcula o modelo de apresentação sem depender de React ou Supabase.
+
+Durante a implantação da migration, `legacy-data-access.ts` mantém compatibilidade se o PostgREST ainda não reconhecer a função. Esse fallback existe apenas para evitar indisponibilidade entre deploy e migration e deve ser removido depois da confirmação em produção.
 
 Fase 5: `return_reminders`, participações societárias versionadas, `profit_distributions`, reservas e ajustes. Percentuais iniciais 50/50; estimativas gerenciais, sem transferências bancárias. Retornos clínicos sempre dependem da confirmação profissional. WhatsApp somente por link e contato autorizado.
 

@@ -34,3 +34,16 @@ test('proxy de sessão não intercepta a página pública de login', async () =>
   assert.match(proxy, /\(\?!login/);
   assert.match(proxy, /auth\.getClaims\(\)/);
 });
+
+test('financeiro usa uma única leitura consolidada no banco', async () => {
+  const [page, repository] = await Promise.all([
+    source('src/app/(dashboard)/financeiro/page.tsx'),
+    source('src/features/finances/data-access.ts'),
+  ]);
+
+  assert.doesNotMatch(page, /\.from\(/);
+  assert.match(page, /getFinancialDashboardData/);
+  assert.match(repository, /\.rpc\(['"]get_financial_dashboard['"]/);
+  assert.match(repository, /PGRST202/);
+  assert.match(repository, /getLegacyFinancialDashboardData/);
+});

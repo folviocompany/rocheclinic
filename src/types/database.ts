@@ -1,4 +1,5 @@
 type Table<Row, Insert = Partial<Row>> = { Row: Row; Insert: Insert; Update: Partial<Insert>; Relationships: [] };
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 export type Profile = { id: string; display_name: string; active: boolean; created_at: string; updated_at: string };
 export type Professional = { id: string; user_id: string; specialty: string; color: string; created_at: string; updated_at: string };
 export type Procedure = { id: string; professional_id: string; name: string; description: string | null; category: string; price_cents: number; duration_minutes: number; return_interval_days: number | null; requires_return_confirmation: boolean; active: boolean; created_at: string; updated_at: string };
@@ -22,4 +23,5 @@ export type Database = { public: { Tables: {
   is_active_member: { Args: Record<string, never>; Returns: boolean };
   own_professional_id: { Args: Record<string, never>; Returns: string };
   register_receivable: { Args: { p_description: string; p_amount_cents: number; p_service_date: string; p_due_date: string; p_client_id: string | null; p_procedure_id: string | null; p_initial_payment_cents: number; p_payment_method: string | null; p_paid_at: string | null }; Returns: string };
+  get_financial_dashboard: { Args: { p_start: string; p_end: string }; Returns: Json };
 }; Enums: { [_ in never]: never }; CompositeTypes: { [_ in never]: never } } };
