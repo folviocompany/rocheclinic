@@ -26,6 +26,7 @@ before(async () => {
   await db.exec(await readFile(new URL('../supabase/migrations/202611160001_financial_dashboard_rpc.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611160002_accounts_receivable.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611170001_accounts_payable.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202611170002_financial_cancellations.sql', import.meta.url), 'utf8'));
   await db.query('insert into auth.users (id) values ($1), ($2), ($3)', [ester, izabela, outsider]);
   await db.query("insert into profiles (id, display_name) values ($1, 'Profissional A'), ($2, 'Profissional B')", [ester, izabela]);
   await db.query("insert into professionals (id, user_id, specialty) values ($1, $2, 'Área A'), ($3, $4, 'Área B')", [p1, ester, p2, izabela]);
@@ -153,6 +154,35 @@ test('não permite quitar a conta a pagar criada por outra usuária', async () =
 
   await assert.rejects(asUser(izabela, "select settle_expense($1, '2026-11-17', 'pix')", [expenseId]), /não autorizada|row-level security/);
   assert.equal((await asUser(ester, 'select status from expenses where id = $1', [expenseId])).rows[0].status, 'pending');
+});
+
+test('cancela receita sem recebimento e preserva justificativa e autoria', async () => {
+  const created = await asUser(ester, "select register_receivable('Receita duplicada', 9000, '2026-11-17', '2026-11-25', null, null, 0, null, null) as id");
+  const id = created.rows[0].id;
+  await asUser(ester, "select cancel_receivable($1, 'Lançamento duplicado')", [id]);
+  const row = (await asUser(ester, 'select status, cancellation_reason, cancelled_by, cancelled_at from receivables where id = $1', [id])).rows[0];
+  assert.equal(row.status, 'cancelled');
+  assert.equal(row.cancellation_reason, 'Lançamento duplicado');
+  assert.equal(row.cancelled_by, ester);
+  assert.ok(row.cancelled_at);
+});
+
+test('não cancela receita com recebimento nem receita de outra profissional', async () => {
+  const paidId = (await asUser(ester, "select id from receivables where description = 'Atendimento teste'")).rows[0].id;
+  await assert.rejects(asUser(ester, "select cancel_receivable($1, 'Cancelamento indevido')", [paidId]), /recebimento|movimentação de caixa/);
+  const openId = (await asUser(ester, "select register_receivable('Receita protegida', 7000, '2026-11-17', '2026-11-25', null, null, 0, null, null) as id")).rows[0].id;
+  await assert.rejects(asUser(izabela, "select cancel_receivable($1, 'Tentativa alheia')", [openId]), /não autorizado/);
+});
+
+test('cancela gasto aberto, mas não gasto pago ou criado por outra usuária', async () => {
+  const openId = (await asUser(ester, "insert into expenses (description, category, amount_cents, competence_date, due_date, responsibility, professional_id, status) values ('Compra duplicada', 'Insumos', 6000, '2026-11-01', '2026-11-25', 'individual', $1, 'pending') returning id", [p1])).rows[0].id;
+  await assert.rejects(asUser(izabela, "select cancel_expense($1, 'Tentativa alheia')", [openId]), /não autorizado/);
+  await asUser(ester, "select cancel_expense($1, 'Compra lançada duas vezes')", [openId]);
+  const cancelled = (await asUser(ester, 'select status, cancellation_reason from expenses where id = $1', [openId])).rows[0];
+  assert.deepEqual(cancelled, { status: 'cancelled', cancellation_reason: 'Compra lançada duas vezes' });
+
+  const paidId = (await asUser(ester, "select id from expenses where description = 'Fornecedor'")).rows[0].id;
+  await assert.rejects(asUser(ester, "select cancel_expense($1, 'Pagamento já realizado')", [paidId]), /pago|movimentação de caixa/);
 });
 
 test('não permite apagar lançamentos financeiros', async () => {

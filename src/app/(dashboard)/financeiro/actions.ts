@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireMember } from '@/features/auth/data-access';
-import { expenseFormSchema, expenseSettlementFormSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseFormValues, type ExpenseSettlementFormValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
+import { expenseFormSchema, expenseSettlementFormSchema, financialCancellationSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseFormValues, type ExpenseSettlementFormValues, type FinancialCancellationValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
 
 type FinancialActionResult<T> = { ok: boolean; message: string; fieldErrors?: Partial<Record<keyof T, string>> };
 
@@ -90,4 +90,18 @@ export async function settleExpense(input: ExpenseSettlementFormValues): Promise
   if (error) return { ok: false, message: 'Não foi possível quitar o gasto. Confira a situação e tente novamente.' };
   revalidatePath('/financeiro');
   return { ok: true, message: 'Gasto quitado e saída de caixa registrada.' };
+}
+
+export async function cancelFinancialEntry(input: FinancialCancellationValues): Promise<FinancialActionResult<FinancialCancellationValues>> {
+  const parsed = financialCancellationSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  const { supabase } = await requireMember();
+  const values = parsed.data;
+  const request = values.entryType === 'receivable'
+    ? supabase.rpc('cancel_receivable', { p_receivable_id: values.entryId, p_reason: values.reason })
+    : supabase.rpc('cancel_expense', { p_expense_id: values.entryId, p_reason: values.reason });
+  const { error } = await request;
+  if (error) return { ok: false, message: 'Não foi possível cancelar. O lançamento pode já possuir movimentação de caixa.' };
+  revalidatePath('/financeiro');
+  return { ok: true, message: 'Lançamento cancelado com histórico preservado.' };
 }
