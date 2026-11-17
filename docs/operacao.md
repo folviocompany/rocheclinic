@@ -1,5 +1,7 @@
 # Publicação e operação
 
+As funções da Vercel ficam fixadas em `iad1` no `vercel.json`, alinhadas ao projeto Supabase em East US (North Virginia). Se o banco for migrado no futuro, atualize essa configuração e o teste de desempenho no mesmo Pull Request.
+
 ## Vercel
 
 Após validar a Fase 1 no Supabase: importar o repositório na Vercel, selecionar Next.js e configurar as duas variáveis de `.env.example` por ambiente. Build: `npm run build`. Usar um projeto Supabase separado para desenvolvimento/homologação. Configurar Site URL do Auth para o domínio HTTPS definitivo; evitar redirects com curingas em produção. Não há callback de convite implementado nesta fase.

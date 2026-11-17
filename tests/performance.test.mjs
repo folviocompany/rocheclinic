@@ -47,3 +47,8 @@ test('financeiro usa uma única leitura consolidada no banco', async () => {
   assert.match(repository, /PGRST202/);
   assert.match(repository, /getLegacyFinancialDashboardData/);
 });
+
+test('funções da Vercel permanecem na mesma região do Supabase', async () => {
+  const config = JSON.parse(await source('vercel.json'));
+  assert.deepEqual(config.regions, ['iad1']);
+});
