@@ -44,8 +44,8 @@ test('financeiro usa uma única leitura consolidada no banco', async () => {
   assert.doesNotMatch(page, /\.from\(/);
   assert.match(page, /getFinancialDashboardData/);
   assert.match(repository, /\.rpc\(['"]get_financial_dashboard['"]/);
-  assert.match(repository, /PGRST202/);
-  assert.match(repository, /getLegacyFinancialDashboardData/);
+  assert.doesNotMatch(repository, /PGRST202/);
+  assert.doesNotMatch(repository, /getLegacyFinancialDashboardData/);
 });
 
 test('funções da Vercel permanecem na mesma região do Supabase', async () => {

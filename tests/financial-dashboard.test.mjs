@@ -16,6 +16,9 @@ const payload = {
   profiles: [{ id: 'u1', display_name: 'Ester' }],
   clients: [],
   procedures: [],
+  openReceivables: [
+    { id: 'r1', description: 'Atendimento', client_name: null, amount_cents: 30000, paid_cents: 10000, balance_cents: 20000, due_date: '2026-11-15', status: 'partially_paid' },
+  ],
 };
 
 test('calcula faturamento, caixa e saldo parcial sem duplicidade', () => {
@@ -47,4 +50,10 @@ test('atribui receitas à profissional e gastos compartilhados à clínica', () 
     { name: 'Ester', revenue: 30000, received: 10000, expense: 5000 },
     { name: 'Clínica', revenue: 0, received: 0, expense: 10000 },
   ]);
+});
+
+test('expõe somente o saldo real das contas abertas para recebimento', () => {
+  const result = buildFinancialDashboard(payload, 'competence', '2026-11-30');
+  assert.deepEqual(result.openReceivables, payload.openReceivables);
+  assert.equal(result.openReceivables[0].balance_cents, 20000);
 });

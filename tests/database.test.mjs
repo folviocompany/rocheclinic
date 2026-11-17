@@ -24,6 +24,7 @@ before(async () => {
   await db.exec(await readFile(new URL('../supabase/migrations/202611140001_clients.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611150001_financial_foundation.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611160001_financial_dashboard_rpc.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202611160002_accounts_receivable.sql', import.meta.url), 'utf8'));
   await db.query('insert into auth.users (id) values ($1), ($2), ($3)', [ester, izabela, outsider]);
   await db.query("insert into profiles (id, display_name) values ($1, 'Profissional A'), ($2, 'Profissional B')", [ester, izabela]);
   await db.query("insert into professionals (id, user_id, specialty) values ($1, $2, 'Área A'), ($3, $4, 'Área B')", [p1, ester, p2, izabela]);
@@ -109,6 +110,23 @@ test('impede pagamento acima do saldo e pagamento em receita alheia', async () =
   await assert.rejects(asUser(izabela, "insert into payments (receivable_id, amount_cents, paid_at, payment_method) values ($1, 1000, '2026-11-15', 'pix')", [receivableId]), /row-level security|não autorizado/);
 });
 
+test('registra recebimentos parciais e totais pela função transacional', async () => {
+  const created = await asUser(ester, "select register_receivable('Receita para quitação', 20000, '2026-11-16', '2026-11-20', null, null, 0, null, null) as id");
+  const receivableId = created.rows[0].id;
+
+  await asUser(ester, "select register_payment($1, 7500, '2026-11-16', 'pix', 'Primeira parcela')", [receivableId]);
+  assert.equal((await asUser(ester, 'select status from receivables where id = $1', [receivableId])).rows[0].status, 'partially_paid');
+
+  await asUser(ester, "select register_payment($1, 12500, '2026-11-17', 'transfer', null)", [receivableId]);
+  assert.equal((await asUser(ester, 'select status from receivables where id = $1', [receivableId])).rows[0].status, 'paid');
+  await assert.rejects(asUser(ester, "select register_payment($1, 1, '2026-11-17', 'pix', null)", [receivableId]), /excede o saldo/);
+});
+
+test('função de recebimento não permite quitar receita de outra profissional', async () => {
+  const receivableId = (await asUser(ester, "select id from receivables where description = 'Atendimento teste'")).rows[0].id;
+  await assert.rejects(asUser(izabela, "select register_payment($1, 1000, '2026-11-16', 'pix', null)", [receivableId]), /não autorizado|row-level security/);
+});
+
 test('despesas individuais e compartilhadas respeitam responsabilidade', async () => {
   await asUser(ester, "insert into expenses (description, category, amount_cents, competence_date, due_date, responsibility, professional_id, status) values ('Material', 'Insumos', 5000, '2026-11-01', '2026-11-10', 'individual', $1, 'pending')", [p1]);
   await asUser(izabela, "insert into expenses (description, category, amount_cents, competence_date, due_date, paid_at, responsibility, professional_id, payment_method, status) values ('Aluguel', 'Estrutura', 100000, '2026-11-01', '2026-11-05', '2026-11-05', 'shared', null, 'pix', 'paid')");
@@ -134,9 +152,12 @@ test('dashboard financeiro é consolidado em uma única função segura', async 
   assert.ok(Array.isArray(dashboard.expenses));
   assert.ok(Array.isArray(dashboard.clients));
   assert.ok(Array.isArray(dashboard.procedures));
+  assert.ok(Array.isArray(dashboard.openReceivables));
   assert.ok(dashboard.receivables.some((item) => item.description === 'Atendimento teste'));
   assert.ok(dashboard.procedures.length > 0);
   assert.ok(dashboard.procedures.every((item) => item.professional_id === p1));
+  assert.ok(dashboard.openReceivables.every((item) => Number(item.balance_cents) > 0));
+  assert.ok(dashboard.openReceivables.every((item) => item.professional_id === p1));
 });
 
 test('função consolidada não vaza dados para conta sem vínculo', async () => {
