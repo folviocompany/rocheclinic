@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { ArrowDownRight, ArrowUpRight, CalendarRange, CircleDollarSign, Clock3, LoaderCircle, Plus, ReceiptText, TrendingUp, WalletCards, X } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, CalendarRange, CircleDollarSign, Clock3, Download, LoaderCircle, Plus, ReceiptText, TrendingUp, WalletCards, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { expenseFormSchema, formatMoney, paymentMethods, revenueFormSchema, type ExpenseFormValues, type RevenueFormValues } from '@/features/finances/schema';
 import { registerExpense, registerRevenue } from './actions';
@@ -60,6 +60,7 @@ export function FinancialDashboard({ data, month, regime, clients, procedures }:
 
   const mainResult = regime === 'cash' ? data.metrics.cashResult : data.metrics.competenceResult;
   return <>
+    <div className="finance-export"><Button asChild variant="outline"><a href={`/financeiro/exportar?month=${encodeURIComponent(month)}&regime=${regime}`}><Download size={17} /> Exportar CSV</a></Button></div>
     <div className="finance-filters"><label><CalendarRange size={17} /><input type="month" value={month} onChange={(event) => changeFilters(event.target.value, regime)} aria-label="Mês de referência" /></label><div className="regime-toggle"><button className={regime === 'competence' ? 'selected' : ''} onClick={() => changeFilters(month, 'competence')}>Competência</button><button className={regime === 'cash' ? 'selected' : ''} onClick={() => changeFilters(month, 'cash')}>Caixa</button></div><div className="finance-quick-actions"><Button variant="outline" onClick={() => openModal('expense')}><ArrowDownRight size={17} /> Registrar gasto</Button><Button onClick={() => openModal('revenue')}><Plus size={17} /> Registrar ganho</Button></div></div>
     {notice && <p className={`alert ${notice.kind === 'error' ? 'error' : 'success'}`} role="status">{notice.text}</p>}
     <div className="finance-metrics"><Metric icon={CircleDollarSign} label="Faturado" value={data.metrics.billed} hint="Atendimentos do período" tone="rose" /><Metric icon={WalletCards} label="Recebido" value={data.metrics.received} hint="Entradas efetivas" tone="green" /><Metric icon={Clock3} label="A receber" value={data.metrics.pending} hint="Saldo do faturado" tone="gold" /><Metric icon={ReceiptText} label={regime === 'cash' ? 'Gastos pagos' : 'Gastos incorridos'} value={regime === 'cash' ? data.metrics.expensesPaid : data.metrics.expensesIncurred} hint={regime === 'cash' ? 'Saídas efetivas' : 'Competência do período'} tone="red" /><Metric icon={TrendingUp} label="Resultado estimado" value={mainResult} hint={regime === 'cash' ? 'Recebido menos pago' : 'Faturado menos incorrido'} tone={mainResult >= 0 ? 'green' : 'red'} emphasized /></div>
