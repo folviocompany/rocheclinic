@@ -52,3 +52,24 @@ test('funções da Vercel permanecem na mesma região do Supabase', async () => 
   const config = JSON.parse(await source('vercel.json'));
   assert.deepEqual(config.regions, ['iad1']);
 });
+
+test('contas a receber e a pagar compartilham os mesmos componentes visuais', async () => {
+  const [receivable, payable, shared] = await Promise.all([
+    source('src/app/(dashboard)/financeiro/accounts-receivable-panel.tsx'),
+    source('src/app/(dashboard)/financeiro/accounts-payable-panel.tsx'),
+    source('src/app/(dashboard)/financeiro/financial-account-ui.tsx'),
+  ]);
+
+  for (const panel of [receivable, payable]) {
+    assert.match(panel, /FinancialAccountPanel/);
+    assert.match(panel, /FinancialAccountRow/);
+    assert.match(panel, /FinancialModal/);
+    assert.match(panel, /FinancialField/);
+    assert.doesNotMatch(panel, /function Field/);
+  }
+
+  assert.match(shared, /export function FinancialAccountPanel/);
+  assert.match(shared, /export function FinancialAccountRow/);
+  assert.match(shared, /export function FinancialModal/);
+  assert.match(shared, /export function FinancialField/);
+});
