@@ -11,6 +11,19 @@ export type FinancialDashboardPayload = {
   profiles: Array<{ id: string; display_name: string }>;
   clients: Array<{ id: string; full_name: string }>;
   procedures: Array<{ id: string; professional_id: string; name: string }>;
+  openReceivables: OpenReceivableRow[];
+};
+
+export type OpenReceivableRow = {
+  id: string;
+  professional_id?: string;
+  description: string;
+  client_name: string | null;
+  amount_cents: number;
+  paid_cents: number;
+  balance_cents: number;
+  due_date: string;
+  status: string;
 };
 
 type ExpenseDashboardRow = {
@@ -29,6 +42,7 @@ export type FinancialDashboardViewModel = {
   daily: Array<{ label: string; revenue: number; expense: number }>;
   professionals: Array<{ name: string; revenue: number; received: number; expense: number }>;
   transactions: Array<{ id: string; type: 'revenue' | 'payment' | 'expense'; description: string; date: string; amount: number; status: string; professional: string }>;
+  openReceivables: OpenReceivableRow[];
 };
 
 const sum = <T,>(items: T[], getter: (item: T) => number) => items.reduce((total, item) => total + getter(item), 0);
@@ -119,5 +133,6 @@ export function buildFinancialDashboard(
     daily,
     professionals: professionalChart,
     transactions,
+    openReceivables: payload.openReceivables,
   };
 }

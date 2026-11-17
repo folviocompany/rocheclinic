@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireMember } from '@/features/auth/data-access';
-import { expenseFormSchema, moneyToCents, revenueFormSchema, type ExpenseFormValues, type RevenueFormValues } from '@/features/finances/schema';
+import { expenseFormSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseFormValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
 
 type FinancialActionResult<T> = { ok: boolean; message: string; fieldErrors?: Partial<Record<keyof T, string>> };
 
@@ -58,4 +58,21 @@ export async function registerExpense(input: ExpenseFormValues): Promise<Financi
   if (error) return { ok: false, message: 'Não foi possível registrar o gasto. Verifique os dados e tente novamente.' };
   revalidatePath('/financeiro');
   return { ok: true, message: 'Gasto registrado com segurança.' };
+}
+
+export async function registerPayment(input: PaymentFormValues): Promise<FinancialActionResult<PaymentFormValues>> {
+  const parsed = paymentFormSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  const { supabase } = await requireMember();
+  const values = parsed.data;
+  const { error } = await supabase.rpc('register_payment', {
+    p_receivable_id: values.receivableId,
+    p_amount_cents: moneyToCents(values.amount),
+    p_paid_at: values.paidAt,
+    p_payment_method: values.paymentMethod,
+    p_notes: values.notes || null,
+  });
+  if (error) return { ok: false, message: 'Não foi possível registrar o recebimento. Confira o saldo e tente novamente.' };
+  revalidatePath('/financeiro');
+  return { ok: true, message: 'Recebimento registrado com segurança.' };
 }
