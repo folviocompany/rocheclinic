@@ -19,6 +19,9 @@ const payload = {
   openReceivables: [
     { id: 'r1', description: 'Atendimento', client_name: null, amount_cents: 30000, paid_cents: 10000, balance_cents: 20000, due_date: '2026-11-15', status: 'partially_paid' },
   ],
+  openExpenses: [
+    { id: 'e1', description: 'Material', category: 'Insumos', amount_cents: 5000, due_date: '2026-11-10', responsibility: 'individual', status: 'pending' },
+  ],
 };
 
 test('calcula faturamento, caixa e saldo parcial sem duplicidade', () => {
@@ -56,4 +59,9 @@ test('expõe somente o saldo real das contas abertas para recebimento', () => {
   const result = buildFinancialDashboard(payload, 'competence', '2026-11-30');
   assert.deepEqual(result.openReceivables, payload.openReceivables);
   assert.equal(result.openReceivables[0].balance_cents, 20000);
+});
+
+test('expõe as contas abertas que podem ser pagas pela usuária', () => {
+  const result = buildFinancialDashboard(payload, 'competence', '2026-11-30');
+  assert.deepEqual(result.openExpenses, payload.openExpenses);
 });

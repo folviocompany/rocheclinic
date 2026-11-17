@@ -48,9 +48,16 @@ export const paymentFormSchema = z.object({
   notes: z.string().trim().max(300),
 });
 
+export const expenseSettlementFormSchema = z.object({
+  expenseId: z.uuid('Selecione uma conta a pagar.'),
+  paidAt: z.string().regex(datePattern, 'Informe a data do pagamento.'),
+  paymentMethod: z.enum(paymentMethods, 'Informe a forma de pagamento.'),
+});
+
 export type RevenueFormValues = z.infer<typeof revenueFormSchema>;
 export type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
 export type PaymentFormValues = z.infer<typeof paymentFormSchema>;
+export type ExpenseSettlementFormValues = z.infer<typeof expenseSettlementFormSchema>;
 
 export function moneyToCents(value: string) { return Math.round(Number((value || '0').replace(',', '.')) * 100); }
 export function formatMoney(cents: number) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100); }
