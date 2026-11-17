@@ -73,3 +73,11 @@ test('contas a receber e a pagar compartilham os mesmos componentes visuais', as
   assert.match(shared, /export function FinancialModal/);
   assert.match(shared, /export function FinancialField/);
 });
+
+test('exportação CSV usa a leitura consolidada e exige a camada autenticada', async () => {
+  const route = await source('src/app/(dashboard)/financeiro/exportar/route.ts');
+  assert.match(route, /getFinancialDashboardData/);
+  assert.match(route, /buildFinancialCsv/);
+  assert.match(route, /Content-Disposition/);
+  assert.match(route, /no-store/);
+});
