@@ -24,5 +24,6 @@ export type Database = { public: { Tables: {
   own_professional_id: { Args: Record<string, never>; Returns: string };
   register_receivable: { Args: { p_description: string; p_amount_cents: number; p_service_date: string; p_due_date: string; p_client_id: string | null; p_procedure_id: string | null; p_initial_payment_cents: number; p_payment_method: string | null; p_paid_at: string | null }; Returns: string };
   register_payment: { Args: { p_receivable_id: string; p_amount_cents: number; p_paid_at: string; p_payment_method: PaymentMethod; p_notes?: string | null }; Returns: string };
+  settle_expense: { Args: { p_expense_id: string; p_paid_at: string; p_payment_method: PaymentMethod }; Returns: string };
   get_financial_dashboard: { Args: { p_start: string; p_end: string }; Returns: Json };
 }; Enums: { [_ in never]: never }; CompositeTypes: { [_ in never]: never } } };

@@ -25,6 +25,7 @@ before(async () => {
   await db.exec(await readFile(new URL('../supabase/migrations/202611150001_financial_foundation.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611160001_financial_dashboard_rpc.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611160002_accounts_receivable.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202611170001_accounts_payable.sql', import.meta.url), 'utf8'));
   await db.query('insert into auth.users (id) values ($1), ($2), ($3)', [ester, izabela, outsider]);
   await db.query("insert into profiles (id, display_name) values ($1, 'Profissional A'), ($2, 'Profissional B')", [ester, izabela]);
   await db.query("insert into professionals (id, user_id, specialty) values ($1, $2, 'Área A'), ($3, $4, 'Área B')", [p1, ester, p2, izabela]);
@@ -134,6 +135,26 @@ test('despesas individuais e compartilhadas respeitam responsabilidade', async (
   await assert.rejects(asUser(ester, "insert into expenses (description, category, amount_cents, competence_date, due_date, responsibility, professional_id, status) values ('Invasão', 'Teste', 100, '2026-11-01', '2026-11-01', 'individual', $1, 'pending')", [p2]), /row-level security/);
 });
 
+test('quita uma conta a pagar por função transacional e registra a saída de caixa', async () => {
+  const created = await asUser(ester, "insert into expenses (description, category, amount_cents, competence_date, due_date, responsibility, professional_id, status) values ('Fornecedor', 'Insumos', 12500, '2026-11-01', '2026-11-20', 'individual', $1, 'pending') returning id", [p1]);
+  const expenseId = created.rows[0].id;
+
+  await asUser(ester, "select settle_expense($1, '2026-11-17', 'transfer')", [expenseId]);
+  const settled = (await asUser(ester, 'select status, paid_at, payment_method from expenses where id = $1', [expenseId])).rows[0];
+  assert.equal(settled.status, 'paid');
+  assert.equal(settled.paid_at.toISOString().slice(0, 10), '2026-11-17');
+  assert.equal(settled.payment_method, 'transfer');
+  await assert.rejects(asUser(ester, "select settle_expense($1, '2026-11-18', 'pix')", [expenseId]), /já foi pago|não está em aberto/);
+});
+
+test('não permite quitar a conta a pagar criada por outra usuária', async () => {
+  const created = await asUser(ester, "insert into expenses (description, category, amount_cents, competence_date, due_date, responsibility, professional_id, status) values ('Despesa privada', 'Insumos', 8000, '2026-11-01', '2026-11-25', 'individual', $1, 'pending') returning id", [p1]);
+  const expenseId = created.rows[0].id;
+
+  await assert.rejects(asUser(izabela, "select settle_expense($1, '2026-11-17', 'pix')", [expenseId]), /não autorizada|row-level security/);
+  assert.equal((await asUser(ester, 'select status from expenses where id = $1', [expenseId])).rows[0].status, 'pending');
+});
+
 test('não permite apagar lançamentos financeiros', async () => {
   await assert.rejects(asUser(ester, 'delete from receivables'), /permission denied/);
   await assert.rejects(asUser(ester, 'delete from payments'), /permission denied/);
@@ -153,11 +174,14 @@ test('dashboard financeiro é consolidado em uma única função segura', async 
   assert.ok(Array.isArray(dashboard.clients));
   assert.ok(Array.isArray(dashboard.procedures));
   assert.ok(Array.isArray(dashboard.openReceivables));
+  assert.ok(Array.isArray(dashboard.openExpenses));
   assert.ok(dashboard.receivables.some((item) => item.description === 'Atendimento teste'));
   assert.ok(dashboard.procedures.length > 0);
   assert.ok(dashboard.procedures.every((item) => item.professional_id === p1));
   assert.ok(dashboard.openReceivables.every((item) => Number(item.balance_cents) > 0));
   assert.ok(dashboard.openReceivables.every((item) => item.professional_id === p1));
+  assert.ok(dashboard.openExpenses.every((item) => item.created_by === ester));
+  assert.ok(dashboard.openExpenses.every((item) => ['planned', 'pending'].includes(item.status)));
 });
 
 test('função consolidada não vaza dados para conta sem vínculo', async () => {

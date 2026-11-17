@@ -1,10 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { expenseFormSchema, moneyToCents, paymentFormSchema, revenueFormSchema } from '../src/features/finances/schema.ts';
+import { expenseFormSchema, expenseSettlementFormSchema, moneyToCents, paymentFormSchema, revenueFormSchema } from '../src/features/finances/schema.ts';
 
 const revenue = { description: 'Atendimento', amount: '300,00', serviceDate: '2026-11-15', dueDate: '2026-11-15', clientId: '', procedureId: '', initialPayment: '100,00', paymentMethod: 'pix', paidAt: '2026-11-15' };
 const expense = { description: 'Material', category: 'Insumos', amount: '50,00', competenceDate: '2026-11-01', dueDate: '2026-11-10', responsibility: 'individual', status: 'pending', paidAt: '', paymentMethod: '', notes: '' };
 const payment = { receivableId: '30000000-0000-4000-8000-000000000001', amount: '125,50', paidAt: '2026-11-16', paymentMethod: 'pix', notes: '' };
+const settlement = { expenseId: '40000000-0000-4000-8000-000000000001', paidAt: '2026-11-17', paymentMethod: 'transfer' };
 
 test('converte valores financeiros para centavos', () => {
   assert.equal(moneyToCents('300,00'), 30000);
@@ -29,4 +30,11 @@ test('recebimento exige título, valor positivo, data e forma de pagamento', () 
   assert.equal(paymentFormSchema.safeParse({ ...payment, amount: '0' }).success, false);
   assert.equal(paymentFormSchema.safeParse({ ...payment, paidAt: '' }).success, false);
   assert.equal(paymentFormSchema.safeParse({ ...payment, paymentMethod: '' }).success, false);
+});
+
+test('quitação de gasto exige lançamento, data e forma de pagamento', () => {
+  assert.equal(expenseSettlementFormSchema.safeParse(settlement).success, true);
+  assert.equal(expenseSettlementFormSchema.safeParse({ ...settlement, expenseId: '' }).success, false);
+  assert.equal(expenseSettlementFormSchema.safeParse({ ...settlement, paidAt: '' }).success, false);
+  assert.equal(expenseSettlementFormSchema.safeParse({ ...settlement, paymentMethod: '' }).success, false);
 });

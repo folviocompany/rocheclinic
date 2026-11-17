@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireMember } from '@/features/auth/data-access';
-import { expenseFormSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseFormValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
+import { expenseFormSchema, expenseSettlementFormSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseFormValues, type ExpenseSettlementFormValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
 
 type FinancialActionResult<T> = { ok: boolean; message: string; fieldErrors?: Partial<Record<keyof T, string>> };
 
@@ -75,4 +75,19 @@ export async function registerPayment(input: PaymentFormValues): Promise<Financi
   if (error) return { ok: false, message: 'Não foi possível registrar o recebimento. Confira o saldo e tente novamente.' };
   revalidatePath('/financeiro');
   return { ok: true, message: 'Recebimento registrado com segurança.' };
+}
+
+export async function settleExpense(input: ExpenseSettlementFormValues): Promise<FinancialActionResult<ExpenseSettlementFormValues>> {
+  const parsed = expenseSettlementFormSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  const { supabase } = await requireMember();
+  const values = parsed.data;
+  const { error } = await supabase.rpc('settle_expense', {
+    p_expense_id: values.expenseId,
+    p_paid_at: values.paidAt,
+    p_payment_method: values.paymentMethod,
+  });
+  if (error) return { ok: false, message: 'Não foi possível quitar o gasto. Confira a situação e tente novamente.' };
+  revalidatePath('/financeiro');
+  return { ok: true, message: 'Gasto quitado e saída de caixa registrada.' };
 }
