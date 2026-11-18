@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireMember } from '@/features/auth/data-access';
-import { expenseCategoryFormSchema, expenseFormSchema, expenseSettlementFormSchema, financialCancellationSchema, financialReopenSchema, financialReversalSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseCategoryFormValues, type ExpenseFormValues, type ExpenseSettlementFormValues, type FinancialCancellationValues, type FinancialReopenValues, type FinancialReversalValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
+import { expenseCategoryFormSchema, expenseFormSchema, expenseRecurrenceFormSchema, expenseSettlementFormSchema, financialCancellationSchema, financialReopenSchema, financialReversalSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseCategoryFormValues, type ExpenseFormValues, type ExpenseRecurrenceFormValues, type ExpenseSettlementFormValues, type FinancialCancellationValues, type FinancialReopenValues, type FinancialReversalValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
 
 type FinancialActionResult<T> = { ok: boolean; message: string; fieldErrors?: Partial<Record<keyof T, string>> };
 
@@ -24,13 +24,13 @@ export async function registerRevenue(input: RevenueFormValues): Promise<Financi
   const { error } = await supabase.rpc('register_receivable', {
     p_description: values.description,
     p_amount_cents: moneyToCents(values.amount),
-    p_service_date: values.serviceDate,
-    p_due_date: values.dueDate,
+    p_service_date: values.launchDate,
+    p_due_date: values.launchDate,
     p_client_id: values.clientId || null,
     p_procedure_id: values.procedureId || null,
-    p_initial_payment_cents: moneyToCents(values.initialPayment),
-    p_payment_method: values.paymentMethod || null,
-    p_paid_at: values.paidAt || null,
+    p_initial_payment_cents: values.status === 'received' ? moneyToCents(values.amount) : 0,
+    p_payment_method: values.status === 'received' ? values.paymentMethod : null,
+    p_paid_at: values.status === 'received' ? values.launchDate : null,
   });
   if (error) return { ok: false, message: 'Não foi possível registrar o ganho. Verifique os dados e tente novamente.' };
   revalidatePath('/financeiro');
@@ -40,23 +40,20 @@ export async function registerRevenue(input: RevenueFormValues): Promise<Financi
 export async function registerExpense(input: ExpenseFormValues): Promise<FinancialActionResult<ExpenseFormValues>> {
   const parsed = expenseFormSchema.safeParse(input);
   if (!parsed.success) return validationFailure(parsed.error);
-  const { supabase, professional } = await requireMember();
+  const { supabase } = await requireMember();
   const values = parsed.data;
   const { data: category } = await supabase.from('expense_categories').select('id').eq('name', values.category).eq('active', true).maybeSingle();
   if (!category) return { ok: false, message: 'Selecione uma categoria ativa.' };
-  const { error } = await supabase.from('expenses').insert({
-    description: values.description,
-    category: values.category,
-    category_id: category.id,
-    amount_cents: moneyToCents(values.amount),
-    competence_date: values.competenceDate,
-    due_date: values.dueDate,
-    paid_at: values.status === 'paid' ? values.paidAt : null,
-    responsibility: values.responsibility,
-    professional_id: values.responsibility === 'individual' ? professional.id : null,
-    payment_method: values.status === 'paid' ? values.paymentMethod || null : null,
-    status: values.status,
-    notes: values.notes || null,
+  const { error } = await supabase.rpc('register_expense', {
+    p_description: values.description,
+    p_category_id: category.id,
+    p_amount_cents: moneyToCents(values.amount),
+    p_launch_date: values.launchDate,
+    p_responsibility: values.responsibility,
+    p_status: values.status,
+    p_payment_method: values.status === 'paid' ? values.paymentMethod : null,
+    p_notes: values.notes || null,
+    p_recurring: values.recurring,
   });
   if (error) return { ok: false, message: 'Não foi possível registrar o gasto. Verifique os dados e tente novamente.' };
   revalidatePath('/financeiro');
@@ -80,6 +77,32 @@ export async function setExpenseCategoryActive(id: string, active: boolean) {
   if (error) return { ok: false, message: 'Não foi possível alterar a categoria.' };
   revalidatePath('/financeiro');
   return { ok: true, message: active ? 'Categoria reativada.' : 'Categoria desativada.' };
+}
+
+export async function updateExpenseRecurrence(input: ExpenseRecurrenceFormValues): Promise<FinancialActionResult<ExpenseRecurrenceFormValues>> {
+  const parsed = expenseRecurrenceFormSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  const { supabase } = await requireMember();
+  const values = parsed.data;
+  const { error } = await supabase.rpc('update_expense_recurrence', {
+    p_id: values.id,
+    p_description: values.description,
+    p_category_id: values.categoryId,
+    p_amount_cents: moneyToCents(values.amount),
+    p_responsibility: values.responsibility,
+  });
+  if (error) return { ok: false, message: 'Não foi possível alterar a recorrência.' };
+  revalidatePath('/financeiro');
+  return { ok: true, message: 'Próximos lançamentos atualizados.' };
+}
+
+export async function stopExpenseRecurrence(id: string) {
+  if (!z.uuid().safeParse(id).success) return { ok: false, message: 'Recorrência inválida.' };
+  const { supabase } = await requireMember();
+  const { error } = await supabase.rpc('stop_expense_recurrence', { p_id: id });
+  if (error) return { ok: false, message: 'Não foi possível encerrar a recorrência.' };
+  revalidatePath('/financeiro');
+  return { ok: true, message: 'Recorrência encerrada. O histórico foi preservado.' };
 }
 
 export async function registerPayment(input: PaymentFormValues): Promise<FinancialActionResult<PaymentFormValues>> {

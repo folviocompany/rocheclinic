@@ -45,31 +45,29 @@ import { AccountsReceivablePanel } from "./accounts-receivable-panel";
 import { AccountsPayablePanel } from "./accounts-payable-panel";
 import { FinancialReversalPanel } from "./financial-reversal-panel";
 import { ExpenseCategoryManager } from "./expense-category-manager";
+import { ExpenseRecurrenceManager } from "./expense-recurrence-manager";
 
 type Option = { id: string; name: string };
 const today = new Date().toISOString().slice(0, 10);
 const emptyRevenue: RevenueFormValues = {
   description: "",
   amount: "",
-  serviceDate: today,
-  dueDate: today,
+  launchDate: today,
   clientId: "",
   procedureId: "",
-  initialPayment: "0",
+  status: "pending",
   paymentMethod: "",
-  paidAt: "",
 };
 const emptyExpense: ExpenseFormValues = {
   description: "",
   category: "",
   amount: "",
-  competenceDate: today,
-  dueDate: today,
+  launchDate: today,
   responsibility: "individual",
   status: "pending",
-  paidAt: "",
   paymentMethod: "",
   notes: "",
+  recurring: false,
 };
 const methodLabels: Record<string, string> = {
   pix: "PIX",
@@ -108,7 +106,7 @@ export function FinancialDashboard({
     resolver: zodResolver(expenseFormSchema),
     defaultValues: emptyExpense,
   });
-  const initialPayment = revenueForm.watch("initialPayment");
+  const revenueStatus = revenueForm.watch("status");
   const expenseStatus = expenseForm.watch("status");
 
   function changeFilters(nextMonth: string, nextRegime: string) {
@@ -122,14 +120,12 @@ export function FinancialDashboard({
     if (kind === "revenue")
       revenueForm.reset({
         ...emptyRevenue,
-        serviceDate: `${month}-01`,
-        dueDate: `${month}-01`,
+        launchDate: `${month}-01`,
       });
     else
       expenseForm.reset({
         ...emptyExpense,
-        competenceDate: `${month}-01`,
-        dueDate: `${month}-01`,
+        launchDate: `${month}-01`,
       });
   }
   function submitRevenue(values: RevenueFormValues) {
@@ -191,13 +187,13 @@ export function FinancialDashboard({
             className={regime === "competence" ? "selected" : ""}
             onClick={() => changeFilters(month, "competence")}
           >
-            Competência
+            Lançamentos
           </button>
           <button
             className={regime === "cash" ? "selected" : ""}
             onClick={() => changeFilters(month, "cash")}
           >
-            Caixa
+            Realizados
           </button>
         </div>
         <div className="finance-quick-actions">
@@ -220,7 +216,7 @@ export function FinancialDashboard({
       <div className="finance-metrics">
         <Metric
           icon={CircleDollarSign}
-          label="Faturado"
+          label="Ganhos lançados"
           value={data.metrics.billed}
           hint="Atendimentos do período"
           tone="rose"
@@ -248,7 +244,7 @@ export function FinancialDashboard({
               : data.metrics.expensesIncurred
           }
           hint={
-            regime === "cash" ? "Saídas efetivas" : "Competência do período"
+            regime === "cash" ? "Gastos pagos" : "Gastos lançados"
           }
           tone="red"
         />
@@ -259,7 +255,7 @@ export function FinancialDashboard({
           hint={
             regime === "cash"
               ? "Recebido menos pago"
-              : "Faturado menos incorrido"
+              : "Ganhos menos gastos lançados"
           }
           tone={mainResult >= 0 ? "green" : "red"}
           emphasized
@@ -276,6 +272,7 @@ export function FinancialDashboard({
         reopenable={data.reopenableEntries}
       />
       <ExpenseCategoryManager categories={data.expenseCategories} />
+      <ExpenseRecurrenceManager recurrences={data.expenseRecurrences} categories={data.expenseCategories} />
       <div className="finance-charts">
         <section className="chart-card">
           <div className="chart-heading">
@@ -283,8 +280,8 @@ export function FinancialDashboard({
               <span className="overline">MOVIMENTAÇÃO</span>
               <h2>
                 {regime === "cash"
-                  ? "Entradas e saídas por caixa"
-                  : "Receitas e gastos por competência"}
+                  ? "Valores recebidos e pagos"
+                  : "Ganhos e gastos lançados"}
               </h2>
             </div>
             <span>Valores em R$</span>
@@ -473,8 +470,8 @@ export function FinancialDashboard({
                 </h2>
                 <p>
                   {modal === "revenue"
-                    ? "Faturamento e recebimento são registrados separadamente."
-                    : "Informe se o gasto é individual ou compartilhado."}
+                    ? "Informe a data do lançamento e se o valor já foi recebido."
+                    : "Informe a data, a situação e se o gasto se repete mensalmente."}
                 </p>
               </div>
               <button
@@ -545,50 +542,32 @@ export function FinancialDashboard({
                 </div>
                 <div className="form-row two">
                   <Field
-                    label="Data do atendimento"
-                    error={revenueForm.formState.errors.serviceDate?.message}
+                    label="Data do lançamento"
+                    error={revenueForm.formState.errors.launchDate?.message}
                   >
-                    <input
-                      type="date"
-                      {...revenueForm.register("serviceDate")}
-                    />
+                    <input type="date" {...revenueForm.register("launchDate")} />
                   </Field>
                   <Field
-                    label="Vencimento"
-                    error={revenueForm.formState.errors.dueDate?.message}
+                    label="Situação"
+                    error={revenueForm.formState.errors.status?.message}
                   >
-                    <input type="date" {...revenueForm.register("dueDate")} />
+                    <select {...revenueForm.register("status")}>
+                      <option value="pending">Pendente</option>
+                      <option value="received">Recebido</option>
+                    </select>
                   </Field>
                 </div>
-                <div className="payment-block">
-                  <h3>Recebimento inicial</h3>
-                  <p>
-                    Use zero quando o valor ainda estiver totalmente pendente.
-                  </p>
-                  <div className="form-row three">
-                    <Field
-                      label="Valor recebido (R$)"
-                      error={
-                        revenueForm.formState.errors.initialPayment?.message
-                      }
-                    >
-                      <input
-                        {...revenueForm.register("initialPayment")}
-                        inputMode="decimal"
-                      />
-                    </Field>
+                {revenueStatus === "received" && (
+                  <div className="payment-block">
+                    <h3>Recebimento concluído</h3>
+                    <p>A data do recebimento será a mesma do lançamento.</p>
                     <Field
                       label="Forma de pagamento"
                       error={
                         revenueForm.formState.errors.paymentMethod?.message
                       }
                     >
-                      <select
-                        {...revenueForm.register("paymentMethod")}
-                        disabled={
-                          Number((initialPayment || "0").replace(",", ".")) <= 0
-                        }
-                      >
+                      <select {...revenueForm.register("paymentMethod")}>
                         <option value="">Selecione</option>
                         {paymentMethods.map((method) => (
                           <option value={method} key={method}>
@@ -597,20 +576,8 @@ export function FinancialDashboard({
                         ))}
                       </select>
                     </Field>
-                    <Field
-                      label="Data do recebimento"
-                      error={revenueForm.formState.errors.paidAt?.message}
-                    >
-                      <input
-                        type="date"
-                        {...revenueForm.register("paidAt")}
-                        disabled={
-                          Number((initialPayment || "0").replace(",", ".")) <= 0
-                        }
-                      />
-                    </Field>
                   </div>
-                </div>
+                )}
                 {notice?.kind === "error" && (
                   <p className="alert error">{notice.text}</p>
                 )}
@@ -652,7 +619,7 @@ export function FinancialDashboard({
                     </select>
                   </Field>
                 </div>
-                <div className="form-row three">
+                <div className="form-row two">
                   <Field
                     label="Valor (R$)"
                     error={expenseForm.formState.errors.amount?.message}
@@ -664,19 +631,10 @@ export function FinancialDashboard({
                     />
                   </Field>
                   <Field
-                    label="Competência"
-                    error={expenseForm.formState.errors.competenceDate?.message}
+                    label="Data do lançamento"
+                    error={expenseForm.formState.errors.launchDate?.message}
                   >
-                    <input
-                      type="date"
-                      {...expenseForm.register("competenceDate")}
-                    />
-                  </Field>
-                  <Field
-                    label="Vencimento"
-                    error={expenseForm.formState.errors.dueDate?.message}
-                  >
-                    <input type="date" {...expenseForm.register("dueDate")} />
+                    <input type="date" {...expenseForm.register("launchDate")} />
                   </Field>
                 </div>
                 <div className="form-row two">
@@ -698,20 +656,14 @@ export function FinancialDashboard({
                     error={expenseForm.formState.errors.status?.message}
                   >
                     <select {...expenseForm.register("status")}>
-                      <option value="planned">Prevista</option>
                       <option value="pending">Pendente</option>
                       <option value="paid">Paga</option>
                     </select>
                   </Field>
                 </div>
                 {expenseStatus === "paid" && (
-                  <div className="form-row two">
-                    <Field
-                      label="Data do pagamento"
-                      error={expenseForm.formState.errors.paidAt?.message}
-                    >
-                      <input type="date" {...expenseForm.register("paidAt")} />
-                    </Field>
+                  <div className="payment-block">
+                    <p>A data do pagamento será a mesma do lançamento.</p>
                     <Field
                       label="Forma de pagamento"
                       error={
@@ -729,6 +681,13 @@ export function FinancialDashboard({
                     </Field>
                   </div>
                 )}
+                <label className="check-field compact">
+                  <input type="checkbox" {...expenseForm.register("recurring")} />
+                  <span>
+                    <strong>Repetir mensalmente</strong>
+                    <small>O gasto será lançado todo mês até você alterar ou encerrar a recorrência.</small>
+                  </span>
+                </label>
                 <Field
                   label="Observações"
                   hint="Opcional"

@@ -29,6 +29,7 @@ before(async () => {
   await db.exec(await readFile(new URL('../supabase/migrations/202611170002_financial_cancellations.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611170003_financial_reversals.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611170004_expense_categories.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202611180001_expense_recurrences.sql', import.meta.url), 'utf8'));
   await db.query('insert into auth.users (id) values ($1), ($2), ($3)', [ester, izabela, outsider]);
   await db.query("insert into profiles (id, display_name) values ($1, 'Profissional A'), ($2, 'Profissional B')", [ester, izabela]);
   await db.query("insert into professionals (id, user_id, specialty) values ($1, $2, 'Área A'), ($3, $4, 'Área B')", [p1, ester, p2, izabela]);
@@ -149,6 +150,25 @@ test('categorias de gastos são compartilhadas, únicas e preservam histórico',
   assert.equal((await asUser(ester, 'select active from expense_categories where id=$1', [categoryId])).rows[0].active, false);
   await assert.rejects(asUser(ester, "insert into expenses (description, category, category_id, amount_cents, competence_date, due_date, responsibility, professional_id, status) values ('Novo anúncio', 'Marketing', $1, 1000, '2026-11-01', '2026-11-10', 'individual', $2, 'pending')", [categoryId, p1]), /inactive/);
   assert.equal((await asUser(ester, "select category from expenses where description='Anúncios'")).rows[0].category, 'Marketing');
+});
+
+test('recorrência mensal gera ocorrências até ser alterada ou encerrada', async () => {
+  const category = await asUser(ester, "insert into expense_categories(name) values ('Assinaturas') returning id");
+  const categoryId = category.rows[0].id;
+  const registered = await asUser(ester, "select register_expense('Sistema', $1, 10000, '2026-11-30', 'individual', 'pending', null, null, true) as id", [categoryId]);
+  const first = await asUser(ester, 'select recurrence_id from expenses where id=$1', [registered.rows[0].id]);
+  const recurrenceId = first.rows[0].recurrence_id;
+  await asUser(ester, "select update_expense_recurrence($1, 'Sistema atualizado', $2, 12000, 'individual')", [recurrenceId, categoryId]);
+  await asUser(ester, "select materialize_expense_recurrences('2027-01-31')");
+  const occurrences = await asUser(ester, 'select description,amount_cents,occurrence_date from expenses where recurrence_id=$1 order by occurrence_date', [recurrenceId]);
+  assert.deepEqual(occurrences.rows.map((row) => [row.description, Number(row.amount_cents), new Date(row.occurrence_date).toISOString().slice(0, 10)]), [
+    ['Sistema', 10000, '2026-11-30'],
+    ['Sistema atualizado', 12000, '2026-12-30'],
+    ['Sistema atualizado', 12000, '2027-01-30'],
+  ]);
+  await asUser(ester, 'select stop_expense_recurrence($1)', [recurrenceId]);
+  await asUser(ester, "select materialize_expense_recurrences('2027-03-31')");
+  assert.equal((await asUser(ester, 'select count(*)::int as total from expenses where recurrence_id=$1', [recurrenceId])).rows[0].total, 3);
 });
 
 test('quita uma conta a pagar por função transacional e registra a saída de caixa', async () => {
