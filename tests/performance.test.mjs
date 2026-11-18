@@ -48,6 +48,25 @@ test('financeiro usa uma única leitura consolidada no banco', async () => {
   assert.doesNotMatch(repository, /getLegacyFinancialDashboardData/);
 });
 
+test('gráficos pesados são carregados somente ao se aproximarem da tela', async () => {
+  const [dashboard, deferred, charts] = await Promise.all([
+    source('src/app/(dashboard)/financeiro/financial-dashboard.tsx'),
+    source('src/app/(dashboard)/financeiro/deferred-financial-charts.tsx'),
+    source('src/app/(dashboard)/financeiro/financial-charts.tsx'),
+  ]);
+  assert.doesNotMatch(dashboard, /from ['"]recharts['"]/);
+  assert.match(deferred, /dynamic\([\s\S]*import\(['"]\.\/financial-charts['"]\)/);
+  assert.match(deferred, /IntersectionObserver/);
+  assert.match(charts, /from ['"]recharts['"]/);
+});
+
+test('consultas financeiras crescentes possuem índices seletivos', async () => {
+  const migration = await source('supabase/migrations/202611180002_financial_performance_indexes.sql');
+  assert.match(migration, /expense_recurrences\(created_by,next_occurrence_date\) where active/);
+  assert.match(migration, /receivables\(professional_id,due_date\) where status in/);
+  assert.match(migration, /expenses\(created_by,due_date\) where status in/);
+});
+
 test('funções da Vercel permanecem na mesma região do Supabase', async () => {
   const config = JSON.parse(await source('vercel.json'));
   assert.deepEqual(config.regions, ['iad1']);

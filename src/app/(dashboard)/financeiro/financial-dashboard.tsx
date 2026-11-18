@@ -5,18 +5,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import {
   ArrowDownRight,
   ArrowUpRight,
   CalendarRange,
@@ -46,6 +34,7 @@ import { AccountsPayablePanel } from "./accounts-payable-panel";
 import { FinancialReversalPanel } from "./financial-reversal-panel";
 import { ExpenseCategoryManager } from "./expense-category-manager";
 import { ExpenseRecurrenceManager } from "./expense-recurrence-manager";
+import { DeferredFinancialCharts } from "./deferred-financial-charts";
 
 type Option = { id: string; name: string };
 const today = new Date().toISOString().slice(0, 10);
@@ -273,131 +262,7 @@ export function FinancialDashboard({
       />
       <ExpenseCategoryManager categories={data.expenseCategories} />
       <ExpenseRecurrenceManager recurrences={data.expenseRecurrences} categories={data.expenseCategories} />
-      <div className="finance-charts">
-        <section className="chart-card">
-          <div className="chart-heading">
-            <div>
-              <span className="overline">MOVIMENTAÇÃO</span>
-              <h2>
-                {regime === "cash"
-                  ? "Valores recebidos e pagos"
-                  : "Ganhos e gastos lançados"}
-              </h2>
-            </div>
-            <span>Valores em R$</span>
-          </div>
-          {data.daily.some((item) => item.revenue || item.expense) ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <AreaChart data={data.daily}>
-                <defs>
-                  <linearGradient
-                    id="revenueGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop offset="5%" stopColor="#B66F8B" stopOpacity={0.32} />
-                    <stop offset="95%" stopColor="#B66F8B" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#eee3e8"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="label"
-                  tick={{ fontSize: 10, fill: "#8b7580" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tickFormatter={(v) => `${v / 1000}k`}
-                  tick={{ fontSize: 10, fill: "#8b7580" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip formatter={(value) => formatMoney(Number(value))} />
-                <Legend />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  name="Ganhos"
-                  stroke="#B66F8B"
-                  fill="url(#revenueGradient)"
-                  strokeWidth={2}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="expense"
-                  name="Gastos"
-                  stroke="#9E5D5D"
-                  fill="transparent"
-                  strokeWidth={2}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <ChartEmpty />
-          )}
-        </section>
-        <section className="chart-card">
-          <div className="chart-heading">
-            <div>
-              <span className="overline">POR PROFISSIONAL</span>
-              <h2>Participação no período</h2>
-            </div>
-          </div>
-          {data.professionals.some(
-            (item) => item.revenue || item.received || item.expense,
-          ) ? (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart
-                data={data.professionals}
-                layout="vertical"
-                margin={{ left: 10 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#eee3e8"
-                  horizontal={false}
-                />
-                <XAxis
-                  type="number"
-                  tickFormatter={(v) => `${v / 1000}k`}
-                  tick={{ fontSize: 10, fill: "#8b7580" }}
-                  axisLine={false}
-                />
-                <YAxis
-                  type="category"
-                  dataKey="name"
-                  width={78}
-                  tick={{ fontSize: 11, fill: "#684454" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip formatter={(value) => formatMoney(Number(value))} />
-                <Legend />
-                <Bar
-                  dataKey={regime === "cash" ? "received" : "revenue"}
-                  name={regime === "cash" ? "Recebido" : "Faturado"}
-                  fill="#B66F8B"
-                  radius={[0, 5, 5, 0]}
-                />
-                <Bar
-                  dataKey="expense"
-                  name="Gastos"
-                  fill="#D9B0B0"
-                  radius={[0, 5, 5, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <ChartEmpty />
-          )}
-        </section>
-      </div>
+      <DeferredFinancialCharts daily={data.daily} professionals={data.professionals} regime={regime} />
       <section className="transactions-card">
         <div className="chart-heading">
           <div>
@@ -738,14 +603,6 @@ function Metric({
         <p>{hint}</p>
       </div>
     </article>
-  );
-}
-function ChartEmpty() {
-  return (
-    <div className="chart-empty">
-      <TrendingUp size={27} />
-      <p>Os gráficos aparecerão após os primeiros lançamentos do período.</p>
-    </div>
   );
 }
 function Field({
