@@ -46,6 +46,7 @@ const methodLabels: Record<string, string> = {
 export function FinancialEntryModal({
   modal,
   month,
+  launchDate = `${month}-01`,
   clients,
   procedures,
   categories,
@@ -54,6 +55,7 @@ export function FinancialEntryModal({
 }: {
   modal: "revenue" | "expense";
   month: string;
+  launchDate?: string;
   clients: Option[];
   procedures: Option[];
   categories: Array<{ id: string; name: string; active: boolean }>;
@@ -66,11 +68,11 @@ export function FinancialEntryModal({
   const [pending, startTransition] = useTransition();
   const revenueForm = useForm<RevenueFormValues>({
     resolver: zodResolver(revenueFormSchema),
-    defaultValues: { ...emptyRevenue, launchDate: `${month}-01` },
+    defaultValues: { ...emptyRevenue, launchDate },
   });
   const expenseForm = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
-    defaultValues: { ...emptyExpense, launchDate: `${month}-01` },
+    defaultValues: { ...emptyExpense, launchDate },
   });
   const revenueStatus = revenueForm.watch("status");
   const expenseStatus = expenseForm.watch("status");

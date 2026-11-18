@@ -43,7 +43,7 @@ export function FinancialHistory({ items }: { items: Transaction[] }) {
         </span>
       </div>
       <p className="muted small">
-        Filtros apenas desta lista. Indicadores e CSV consideram o mês inteiro.
+        Filtros apenas desta lista. Indicadores e CSV consideram o período e a visão selecionados no topo.
       </p>
       <div className="history-filters">
         <label>
@@ -152,7 +152,7 @@ export function FinancialHistory({ items }: { items: Transaction[] }) {
       ) : (
         <div className="transactions-empty">
           Nenhuma movimentação encontrada. Tente limpar os filtros ou mudar o
-          mês.
+          período.
         </div>
       )}
       <nav className="history-pagination" aria-label="Páginas do histórico">
