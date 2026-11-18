@@ -46,7 +46,7 @@ export default async function FinancePage({
         regime={regime}
         clients={payload.clients.map((item) => ({ id: item.id, name: item.full_name }))}
         procedures={payload.procedures.map((item) => ({ id: item.id, name: item.name }))}
-        data={{ ...data, transactions: data.transactions.slice(0, 12) }}
+        data={data}
       />
     </>
   );
