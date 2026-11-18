@@ -30,6 +30,7 @@ const payloadSchema = z.object({
   cashReversals: z.array(cashReversal),
   reversibleEntries: z.array(z.object({ id: z.string(), entry_type: z.enum(['receivable', 'expense']), description: z.string(), amount_cents: amount })),
   reopenableEntries: z.array(z.object({ id: z.string(), entry_type: z.enum(['receivable', 'expense']), description: z.string() })),
+  expenseCategories: z.array(z.object({ id: z.string(), name: z.string(), active: z.boolean() })),
 });
 
 export async function getFinancialDashboardData(start: string, end: string): Promise<FinancialDashboardPayload> {

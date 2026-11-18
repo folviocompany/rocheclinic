@@ -16,6 +16,7 @@ export type FinancialDashboardPayload = {
   cashReversals: CashReversalRow[];
   reversibleEntries: ReversibleEntry[];
   reopenableEntries: Array<{ id: string; entry_type: 'receivable' | 'expense'; description: string }>;
+  expenseCategories: Array<{ id: string; name: string; active: boolean }>;
 };
 
 export type CashReversalRow = { id: string; target_type: 'receivable' | 'expense'; target_id: string; amount_cents: number; effective_date: string; reversal_type: string; description: string; professional_id: string | null; responsibility: string | null; expense_professional_id: string | null };
@@ -64,6 +65,7 @@ export type FinancialDashboardViewModel = {
   openExpenses: OpenExpenseRow[];
   reversibleEntries: ReversibleEntry[];
   reopenableEntries: Array<{ id: string; entry_type: 'receivable' | 'expense'; description: string }>;
+  expenseCategories: Array<{ id: string; name: string; active: boolean }>;
 };
 
 const sum = <T,>(items: T[], getter: (item: T) => number) => items.reduce((total, item) => total + getter(item), 0);
@@ -177,5 +179,6 @@ export function buildFinancialDashboard(
     openExpenses: payload.openExpenses,
     reversibleEntries: payload.reversibleEntries,
     reopenableEntries: payload.reopenableEntries,
+    expenseCategories: payload.expenseCategories,
   };
 }

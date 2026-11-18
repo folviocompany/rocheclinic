@@ -28,6 +28,7 @@ before(async () => {
   await db.exec(await readFile(new URL('../supabase/migrations/202611170001_accounts_payable.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611170002_financial_cancellations.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611170003_financial_reversals.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202611170004_expense_categories.sql', import.meta.url), 'utf8'));
   await db.query('insert into auth.users (id) values ($1), ($2), ($3)', [ester, izabela, outsider]);
   await db.query("insert into profiles (id, display_name) values ($1, 'Profissional A'), ($2, 'Profissional B')", [ester, izabela]);
   await db.query("insert into professionals (id, user_id, specialty) values ($1, $2, 'Área A'), ($3, $4, 'Área B')", [p1, ester, p2, izabela]);
@@ -135,6 +136,19 @@ test('despesas individuais e compartilhadas respeitam responsabilidade', async (
   await asUser(izabela, "insert into expenses (description, category, amount_cents, competence_date, due_date, paid_at, responsibility, professional_id, payment_method, status) values ('Aluguel', 'Estrutura', 100000, '2026-11-01', '2026-11-05', '2026-11-05', 'shared', null, 'pix', 'paid')");
   assert.equal((await asUser(ester, 'select * from expenses')).rows.length, 2);
   await assert.rejects(asUser(ester, "insert into expenses (description, category, amount_cents, competence_date, due_date, responsibility, professional_id, status) values ('Invasão', 'Teste', 100, '2026-11-01', '2026-11-01', 'individual', $1, 'pending')", [p2]), /row-level security/);
+});
+
+test('categorias de gastos são compartilhadas, únicas e preservam histórico', async () => {
+  const created = await asUser(ester, "insert into expense_categories (name) values ('Marketing') returning id");
+  const categoryId = created.rows[0].id;
+  assert.equal((await asUser(izabela, 'select name from expense_categories where id=$1', [categoryId])).rows[0].name, 'Marketing');
+  await asUser(ester, "insert into expenses (description, category, category_id, amount_cents, competence_date, due_date, responsibility, professional_id, status) values ('Anúncios', 'nome ignorado', $1, 9000, '2026-11-01', '2026-11-10', 'individual', $2, 'pending')", [categoryId, p1]);
+  assert.equal((await asUser(ester, "select category from expenses where description='Anúncios'")).rows[0].category, 'Marketing');
+  await assert.rejects(asUser(izabela, "insert into expense_categories (name) values (' marketing ')") , /unique constraint/);
+  await asUser(ester, 'update expense_categories set active=false where id=$1', [categoryId]);
+  assert.equal((await asUser(ester, 'select active from expense_categories where id=$1', [categoryId])).rows[0].active, false);
+  await assert.rejects(asUser(ester, "insert into expenses (description, category, category_id, amount_cents, competence_date, due_date, responsibility, professional_id, status) values ('Novo anúncio', 'Marketing', $1, 1000, '2026-11-01', '2026-11-10', 'individual', $2, 'pending')", [categoryId, p1]), /inactive/);
+  assert.equal((await asUser(ester, "select category from expenses where description='Anúncios'")).rows[0].category, 'Marketing');
 });
 
 test('quita uma conta a pagar por função transacional e registra a saída de caixa', async () => {

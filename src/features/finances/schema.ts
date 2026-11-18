@@ -40,6 +40,9 @@ export const expenseFormSchema = z.object({
   if (value.status === 'paid' && !value.paymentMethod) ctx.addIssue({ code: 'custom', path: ['paymentMethod'], message: 'Informe a forma de pagamento.' });
 });
 
+export const expenseCategoryFormSchema = z.object({ name: z.string().trim().min(2, 'Informe o nome da categoria.').max(80) });
+export type ExpenseCategoryFormValues = z.infer<typeof expenseCategoryFormSchema>;
+
 export const paymentFormSchema = z.object({
   receivableId: z.uuid('Selecione uma conta a receber.'),
   amount: money('Valor recebido'),

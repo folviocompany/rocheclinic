@@ -25,6 +25,7 @@ const payload = {
   cashReversals: [],
   reversibleEntries: [],
   reopenableEntries: [],
+  expenseCategories: [{ id: 'c1', name: 'Insumos', active: true }],
 };
 
 test('calcula faturamento, caixa e saldo parcial sem duplicidade', () => {
