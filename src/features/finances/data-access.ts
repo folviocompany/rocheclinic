@@ -12,6 +12,7 @@ const cashParent = z.object({ id: z.string(), professional_id: z.string(), descr
 const expense = z.object({ id: z.string(), description: z.string(), amount_cents: amount, competence_date: z.string(), paid_at: z.string().nullable(), responsibility: z.string(), professional_id: z.string().nullable(), status: z.string() });
 const openReceivable = z.object({ id: z.string(), professional_id: z.string(), description: z.string(), client_name: z.string().nullable(), amount_cents: amount, paid_cents: amount, balance_cents: amount, due_date: z.string(), status: z.string() });
 const openExpense = z.object({ id: z.string(), created_by: z.string(), description: z.string(), category: z.string(), amount_cents: amount, due_date: z.string(), responsibility: z.string(), status: z.string() });
+const cashReversal = z.object({ id: z.string(), target_type: z.enum(['receivable', 'expense']), target_id: z.string(), amount_cents: amount, effective_date: z.string(), reversal_type: z.string(), description: z.string(), professional_id: z.string().nullable(), responsibility: z.string().nullable(), expense_professional_id: z.string().nullable() });
 
 const payloadSchema = z.object({
   receivables: z.array(receivable),
@@ -26,6 +27,9 @@ const payloadSchema = z.object({
   procedures: z.array(z.object({ id: z.string(), professional_id: z.string(), name: z.string() })),
   openReceivables: z.array(openReceivable),
   openExpenses: z.array(openExpense),
+  cashReversals: z.array(cashReversal),
+  reversibleEntries: z.array(z.object({ id: z.string(), entry_type: z.enum(['receivable', 'expense']), description: z.string(), amount_cents: amount })),
+  reopenableEntries: z.array(z.object({ id: z.string(), entry_type: z.enum(['receivable', 'expense']), description: z.string() })),
 });
 
 export async function getFinancialDashboardData(start: string, end: string): Promise<FinancialDashboardPayload> {

@@ -8,6 +8,7 @@ export type Receivable = { id: string; professional_id: string; client_id: strin
 export type Payment = { id: string; receivable_id: string; amount_cents: number; paid_at: string; payment_method: PaymentMethod; notes: string | null; created_by: string; created_at: string };
 export type Expense = { id: string; description: string; category: string; amount_cents: number; competence_date: string; due_date: string; paid_at: string | null; responsibility: 'individual' | 'shared'; professional_id: string | null; payment_method: PaymentMethod | null; status: 'planned' | 'pending' | 'paid' | 'cancelled'; notes: string | null; cancellation_reason: string | null; cancelled_at: string | null; cancelled_by: string | null; created_by: string; updated_by: string; created_at: string; updated_at: string };
 export type PaymentMethod = 'pix' | 'cash' | 'debit_card' | 'credit_card' | 'transfer' | 'other';
+export type FinancialReversal = { id: string; target_type: 'receivable' | 'expense'; target_id: string; reversal_type: 'correction' | 'refund'; amount_cents: number; effective_date: string; original_paid_at: string | null; reason: string; reopened_at: string | null; reopened_by: string | null; reopen_reason: string | null; created_by: string; created_at: string };
 export type Database = { public: { Tables: {
   profiles: Table<Profile>;
   professionals: Table<Professional>;
@@ -16,6 +17,7 @@ export type Database = { public: { Tables: {
   receivables: Table<Receivable>;
   payments: Table<Payment>;
   expenses: Table<Expense>;
+  financial_reversals: Table<FinancialReversal>;
   rooms: Table<{ id: string; name: string; active: boolean; created_at: string; updated_at: string }>;
   business_settings: Table<{ id: number; name: string; timezone: string; currency: string; created_at: string; updated_at: string }>;
   audit_logs: Table<{ id: string; actor_id: string | null; table_name: string; record_id: string; action: string; created_at: string }>;
@@ -27,5 +29,8 @@ export type Database = { public: { Tables: {
   settle_expense: { Args: { p_expense_id: string; p_paid_at: string; p_payment_method: PaymentMethod }; Returns: string };
   cancel_receivable: { Args: { p_receivable_id: string; p_reason: string }; Returns: string };
   cancel_expense: { Args: { p_expense_id: string; p_reason: string }; Returns: string };
+  reverse_receivable: { Args: { p_id: string; p_type: string; p_date: string; p_reason: string }; Returns: string };
+  reverse_expense: { Args: { p_id: string; p_type: string; p_date: string; p_reason: string }; Returns: string };
+  reopen_reversed_entry: { Args: { p_target_type: string; p_target_id: string; p_reason: string }; Returns: string };
   get_financial_dashboard: { Args: { p_start: string; p_end: string }; Returns: Json };
 }; Enums: { [_ in never]: never }; CompositeTypes: { [_ in never]: never } } };

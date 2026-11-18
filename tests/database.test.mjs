@@ -27,6 +27,7 @@ before(async () => {
   await db.exec(await readFile(new URL('../supabase/migrations/202611160002_accounts_receivable.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611170001_accounts_payable.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611170002_financial_cancellations.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202611170003_financial_reversals.sql', import.meta.url), 'utf8'));
   await db.query('insert into auth.users (id) values ($1), ($2), ($3)', [ester, izabela, outsider]);
   await db.query("insert into profiles (id, display_name) values ($1, 'Profissional A'), ($2, 'Profissional B')", [ester, izabela]);
   await db.query("insert into professionals (id, user_id, specialty) values ($1, $2, 'Área A'), ($3, $4, 'Área B')", [p1, ester, p2, izabela]);
@@ -183,6 +184,44 @@ test('cancela gasto aberto, mas não gasto pago ou criado por outra usuária', a
 
   const paidId = (await asUser(ester, "select id from expenses where description = 'Fornecedor'")).rows[0].id;
   await assert.rejects(asUser(ester, "select cancel_expense($1, 'Pagamento já realizado')", [paidId]), /pago|movimentação de caixa/);
+});
+
+test('correção de recebimento reabre o saldo sem apagar pagamentos', async () => {
+  const id = (await asUser(ester, "select register_receivable('Correção recebível', 10000, '2026-11-17', '2026-11-20', null, null, 10000, 'pix', '2026-11-17') as id")).rows[0].id;
+  await asUser(ester, "select reverse_receivable($1, 'correction', '2026-11-17', 'Pagamento lançado por engano')", [id]);
+  assert.equal((await asUser(ester, 'select status from receivables where id = $1', [id])).rows[0].status, 'pending');
+  assert.equal((await asUser(ester, 'select count(*)::int as total from payments where receivable_id = $1', [id])).rows[0].total, 1);
+});
+
+test('devolução real encerra o recebível e registra movimento oposto', async () => {
+  const id = (await asUser(ester, "select register_receivable('Devolução recebível', 12000, '2026-11-17', '2026-11-20', null, null, 5000, 'pix', '2026-11-17') as id")).rows[0].id;
+  await asUser(ester, "select reverse_receivable($1, 'refund', '2026-11-18', 'Cliente desistiu do serviço')", [id]);
+  assert.equal((await asUser(ester, 'select status from receivables where id = $1', [id])).rows[0].status, 'cancelled');
+  const reversal = (await asUser(ester, 'select reversal_type, amount_cents from financial_reversals where target_id = $1', [id])).rows[0];
+  assert.deepEqual({ ...reversal, amount_cents: Number(reversal.amount_cents) }, { reversal_type: 'refund', amount_cents: 5000 });
+});
+
+test('reabre conta encerrada por devolução sem apagar o histórico', async () => {
+  const id = (await asUser(ester, "select id from receivables where description = 'Devolução recebível'")).rows[0].id;
+  await asUser(ester, "select reopen_reversed_entry('receivable', $1, 'Novo atendimento acordado')", [id]);
+  assert.equal((await asUser(ester, 'select status from receivables where id = $1', [id])).rows[0].status, 'pending');
+  assert.equal((await asUser(ester, 'select count(*)::int as total from financial_reversals where target_id = $1', [id])).rows[0].total, 1);
+});
+
+test('correção de pagamento de gasto reabre a conta sem movimento oposto', async () => {
+  const id = (await asUser(ester, "insert into expenses (description, category, amount_cents, competence_date, due_date, paid_at, responsibility, professional_id, payment_method, status) values ('Correção de gasto', 'Insumos', 4500, '2026-11-01', '2026-11-17', '2026-11-17', 'individual', $1, 'pix', 'paid') returning id", [p1])).rows[0].id;
+  await asUser(ester, "select reverse_expense($1, 'correction', '2026-11-17', 'Pagamento lançado por engano')", [id]);
+  const row = (await asUser(ester, 'select status, paid_at from expenses where id=$1', [id])).rows[0];
+  assert.equal(row.status, 'pending');
+  assert.equal(row.paid_at, null);
+});
+
+test('devolução de gasto encerra a conta e permite reabertura auditável', async () => {
+  const id = (await asUser(ester, "insert into expenses (description, category, amount_cents, competence_date, due_date, paid_at, responsibility, professional_id, payment_method, status) values ('Devolução de gasto', 'Insumos', 5500, '2026-11-01', '2026-11-17', '2026-11-17', 'individual', $1, 'pix', 'paid') returning id", [p1])).rows[0].id;
+  await asUser(ester, "select reverse_expense($1, 'refund', '2026-11-18', 'Fornecedor devolveu o valor')", [id]);
+  assert.equal((await asUser(ester, 'select status from expenses where id=$1', [id])).rows[0].status, 'cancelled');
+  await asUser(ester, "select reopen_reversed_entry('expense', $1, 'Nova cobrança do fornecedor')", [id]);
+  assert.equal((await asUser(ester, 'select status from expenses where id=$1', [id])).rows[0].status, 'pending');
 });
 
 test('não permite apagar lançamentos financeiros', async () => {

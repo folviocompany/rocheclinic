@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireMember } from '@/features/auth/data-access';
-import { expenseFormSchema, expenseSettlementFormSchema, financialCancellationSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseFormValues, type ExpenseSettlementFormValues, type FinancialCancellationValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
+import { expenseFormSchema, expenseSettlementFormSchema, financialCancellationSchema, financialReopenSchema, financialReversalSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseFormValues, type ExpenseSettlementFormValues, type FinancialCancellationValues, type FinancialReopenValues, type FinancialReversalValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
 
 type FinancialActionResult<T> = { ok: boolean; message: string; fieldErrors?: Partial<Record<keyof T, string>> };
 
@@ -104,4 +104,25 @@ export async function cancelFinancialEntry(input: FinancialCancellationValues): 
   if (error) return { ok: false, message: 'Não foi possível cancelar. O lançamento pode já possuir movimentação de caixa.' };
   revalidatePath('/financeiro');
   return { ok: true, message: 'Lançamento cancelado com histórico preservado.' };
+}
+
+export async function reverseFinancialEntry(input: FinancialReversalValues): Promise<FinancialActionResult<FinancialReversalValues>> {
+  const parsed = financialReversalSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  const { supabase } = await requireMember();
+  const v = parsed.data;
+  const request = v.entryType === 'receivable'
+    ? supabase.rpc('reverse_receivable', { p_id: v.entryId, p_type: v.reversalType, p_date: v.effectiveDate, p_reason: v.reason })
+    : supabase.rpc('reverse_expense', { p_id: v.entryId, p_type: v.reversalType, p_date: v.effectiveDate, p_reason: v.reason });
+  const { error } = await request;
+  if (error) return { ok: false, message: 'Não foi possível estornar este lançamento.' };
+  revalidatePath('/financeiro');
+  return { ok: true, message: v.reversalType === 'refund' ? 'Devolução registrada e conta encerrada.' : 'Correção registrada e saldo reaberto.' };
+}
+export async function reopenFinancialEntry(input: FinancialReopenValues): Promise<FinancialActionResult<FinancialReopenValues>> {
+  const parsed = financialReopenSchema.safeParse(input); if (!parsed.success) return validationFailure(parsed.error);
+  const { supabase } = await requireMember(); const v = parsed.data;
+  const { error } = await supabase.rpc('reopen_reversed_entry', { p_target_type: v.entryType, p_target_id: v.entryId, p_reason: v.reason });
+  if (error) return { ok: false, message: 'Não foi possível reabrir esta conta.' };
+  revalidatePath('/financeiro'); return { ok: true, message: 'Conta reaberta com histórico preservado.' };
 }

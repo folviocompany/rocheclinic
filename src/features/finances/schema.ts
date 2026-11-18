@@ -60,11 +60,22 @@ export const financialCancellationSchema = z.object({
   reason: z.string().trim().min(3, 'Explique o motivo do cancelamento.').max(300),
 });
 
+export const financialReversalSchema = z.object({
+  entryId: z.uuid('Selecione um lançamento.'),
+  entryType: z.enum(['receivable', 'expense']),
+  reversalType: z.enum(['correction', 'refund']),
+  effectiveDate: z.string().regex(datePattern, 'Informe a data do estorno.'),
+  reason: z.string().trim().min(3, 'Explique o motivo do estorno.').max(300),
+});
+export const financialReopenSchema = z.object({ entryId: z.uuid(), entryType: z.enum(['receivable', 'expense']), reason: z.string().trim().min(3).max(300) });
+
 export type RevenueFormValues = z.infer<typeof revenueFormSchema>;
 export type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
 export type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 export type ExpenseSettlementFormValues = z.infer<typeof expenseSettlementFormSchema>;
 export type FinancialCancellationValues = z.infer<typeof financialCancellationSchema>;
+export type FinancialReversalValues = z.infer<typeof financialReversalSchema>;
+export type FinancialReopenValues = z.infer<typeof financialReopenSchema>;
 
 export function moneyToCents(value: string) { return Math.round(Number((value || '0').replace(',', '.')) * 100); }
 export function formatMoney(cents: number) { return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100); }

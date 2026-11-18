@@ -13,7 +13,13 @@ export type FinancialDashboardPayload = {
   procedures: Array<{ id: string; professional_id: string; name: string }>;
   openReceivables: OpenReceivableRow[];
   openExpenses: OpenExpenseRow[];
+  cashReversals: CashReversalRow[];
+  reversibleEntries: ReversibleEntry[];
+  reopenableEntries: Array<{ id: string; entry_type: 'receivable' | 'expense'; description: string }>;
 };
+
+export type CashReversalRow = { id: string; target_type: 'receivable' | 'expense'; target_id: string; amount_cents: number; effective_date: string; reversal_type: string; description: string; professional_id: string | null; responsibility: string | null; expense_professional_id: string | null };
+export type ReversibleEntry = { id: string; entry_type: 'receivable' | 'expense'; description: string; amount_cents: number };
 
 export type OpenReceivableRow = {
   id: string;
@@ -53,9 +59,11 @@ export type FinancialDashboardViewModel = {
   metrics: { billed: number; received: number; pending: number; expensesIncurred: number; expensesPaid: number; competenceResult: number; cashResult: number };
   daily: Array<{ label: string; revenue: number; expense: number }>;
   professionals: Array<{ name: string; revenue: number; received: number; expense: number }>;
-  transactions: Array<{ id: string; type: 'revenue' | 'payment' | 'expense'; description: string; date: string; amount: number; status: string; professional: string }>;
+  transactions: Array<{ id: string; type: 'revenue' | 'payment' | 'expense' | 'reversal'; description: string; date: string; amount: number; status: string; professional: string }>;
   openReceivables: OpenReceivableRow[];
   openExpenses: OpenExpenseRow[];
+  reversibleEntries: ReversibleEntry[];
+  reopenableEntries: Array<{ id: string; entry_type: 'receivable' | 'expense'; description: string }>;
 };
 
 const sum = <T,>(items: T[], getter: (item: T) => number) => items.reduce((total, item) => total + getter(item), 0);
@@ -71,10 +79,10 @@ export function buildFinancialDashboard(
   }
 
   const billed = sum(payload.receivables, (item) => item.amount_cents);
-  const received = sum(payload.cashPayments, (item) => item.amount_cents);
+  const received = sum(payload.cashPayments, (item) => item.amount_cents) - sum(payload.cashReversals.filter((item) => item.target_type === 'receivable'), (item) => item.amount_cents);
   const pending = sum(payload.receivables, (item) => Math.max(0, item.amount_cents - (paidByReceivable.get(item.id) ?? 0)));
   const expensesIncurred = sum(payload.expenses, (item) => item.amount_cents);
-  const expensesPaid = sum(payload.paidExpenses, (item) => item.amount_cents);
+  const expensesPaid = sum(payload.paidExpenses, (item) => item.amount_cents) - sum(payload.cashReversals.filter((item) => item.target_type === 'expense'), (item) => item.amount_cents);
 
   const dayCount = Number(periodEnd.slice(-2));
   const daily = Array.from({ length: dayCount }, (_, index) => ({
@@ -90,6 +98,11 @@ export function buildFinancialDashboard(
     for (const item of payload.cashPayments) daily[Number(item.paid_at.slice(-2)) - 1].revenue += item.amount_cents;
     for (const item of payload.paidExpenses) {
       if (item.paid_at) daily[Number(item.paid_at.slice(-2)) - 1].expense += item.amount_cents;
+    }
+    for (const item of payload.cashReversals) {
+      const day = Number(item.effective_date.slice(-2)) - 1;
+      if (item.target_type === 'receivable') daily[day].revenue -= item.amount_cents;
+      else daily[day].expense -= item.amount_cents;
     }
   }
 
@@ -112,6 +125,12 @@ export function buildFinancialDashboard(
     const professional = professionalMap.get(cashParents.get(payment.receivable_id)?.professional_id ?? '');
     if (professional) professional.received += payment.amount_cents;
   }
+  for (const reversal of payload.cashReversals) {
+    if (reversal.target_type === 'receivable') {
+      const professional = professionalMap.get(reversal.professional_id ?? '');
+      if (professional) professional.received -= reversal.amount_cents;
+    }
+  }
 
   let sharedExpense = 0;
   const expenseRows = regime === 'cash' ? payload.paidExpenses : payload.expenses;
@@ -120,6 +139,13 @@ export function buildFinancialDashboard(
     else {
       const professional = professionalMap.get(item.professional_id ?? '');
       if (professional) professional.expense += item.amount_cents;
+    }
+  }
+  if (regime === 'cash') for (const reversal of payload.cashReversals.filter((item) => item.target_type === 'expense')) {
+    if (reversal.responsibility === 'shared') sharedExpense -= reversal.amount_cents;
+    else {
+      const professional = professionalMap.get(reversal.expense_professional_id ?? '');
+      if (professional) professional.expense -= reversal.amount_cents;
     }
   }
 
@@ -138,6 +164,7 @@ export function buildFinancialDashboard(
           return { id: item.id, type: 'payment' as const, description: parent?.description ?? 'Recebimento', date: item.paid_at, amount: item.amount_cents, status: 'Recebido', professional: professionalMap.get(parent?.professional_id ?? '')?.name ?? 'Profissional' };
         }),
         ...payload.paidExpenses.map((item) => ({ id: item.id, type: 'expense' as const, description: item.description, date: item.paid_at ?? item.competence_date, amount: item.amount_cents, status: 'Pago', professional: item.responsibility === 'shared' ? 'Clínica' : professionalMap.get(item.professional_id ?? '')?.name ?? 'Profissional' })),
+        ...payload.cashReversals.map((item) => ({ id: item.id, type: 'reversal' as const, description: `Estorno: ${item.description}`, date: item.effective_date, amount: -item.amount_cents, status: 'Devolvido', professional: item.target_type === 'expense' && item.responsibility === 'shared' ? 'Clínica' : professionalMap.get(item.professional_id ?? item.expense_professional_id ?? '')?.name ?? 'Profissional' })),
       ];
   transactions.sort((a, b) => b.date.localeCompare(a.date));
 
@@ -148,5 +175,7 @@ export function buildFinancialDashboard(
     transactions,
     openReceivables: payload.openReceivables,
     openExpenses: payload.openExpenses,
+    reversibleEntries: payload.reversibleEntries,
+    reopenableEntries: payload.reopenableEntries,
   };
 }
