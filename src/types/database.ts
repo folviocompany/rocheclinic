@@ -6,9 +6,10 @@ export type Procedure = { id: string; professional_id: string; name: string; des
 export type Client = { id: string; full_name: string; phone_digits: string; birth_date: string | null; reference_professional_id: string | null; notes: string | null; whatsapp_allowed: boolean; active: boolean; created_by: string; updated_by: string; created_at: string; updated_at: string };
 export type Receivable = { id: string; professional_id: string; client_id: string | null; procedure_id: string | null; description: string; amount_cents: number; service_date: string; due_date: string; status: 'pending' | 'partially_paid' | 'paid' | 'cancelled'; cancellation_reason: string | null; cancelled_at: string | null; cancelled_by: string | null; created_by: string; updated_by: string; created_at: string; updated_at: string };
 export type Payment = { id: string; receivable_id: string; amount_cents: number; paid_at: string; payment_method: PaymentMethod; notes: string | null; created_by: string; created_at: string };
-export type Expense = { id: string; description: string; category: string; amount_cents: number; competence_date: string; due_date: string; paid_at: string | null; responsibility: 'individual' | 'shared'; professional_id: string | null; payment_method: PaymentMethod | null; status: 'planned' | 'pending' | 'paid' | 'cancelled'; notes: string | null; cancellation_reason: string | null; cancelled_at: string | null; cancelled_by: string | null; created_by: string; updated_by: string; created_at: string; updated_at: string };
+export type Expense = { id: string; description: string; category: string; category_id: string; amount_cents: number; competence_date: string; due_date: string; paid_at: string | null; responsibility: 'individual' | 'shared'; professional_id: string | null; payment_method: PaymentMethod | null; status: 'planned' | 'pending' | 'paid' | 'cancelled'; notes: string | null; cancellation_reason: string | null; cancelled_at: string | null; cancelled_by: string | null; created_by: string; updated_by: string; created_at: string; updated_at: string };
 export type PaymentMethod = 'pix' | 'cash' | 'debit_card' | 'credit_card' | 'transfer' | 'other';
 export type FinancialReversal = { id: string; target_type: 'receivable' | 'expense'; target_id: string; reversal_type: 'correction' | 'refund'; amount_cents: number; effective_date: string; original_paid_at: string | null; reason: string; reopened_at: string | null; reopened_by: string | null; reopen_reason: string | null; created_by: string; created_at: string };
+export type ExpenseCategory = { id: string; name: string; active: boolean; created_by: string; updated_by: string; created_at: string; updated_at: string };
 export type Database = { public: { Tables: {
   profiles: Table<Profile>;
   professionals: Table<Professional>;
@@ -18,6 +19,7 @@ export type Database = { public: { Tables: {
   payments: Table<Payment>;
   expenses: Table<Expense>;
   financial_reversals: Table<FinancialReversal>;
+  expense_categories: Table<ExpenseCategory>;
   rooms: Table<{ id: string; name: string; active: boolean; created_at: string; updated_at: string }>;
   business_settings: Table<{ id: number; name: string; timezone: string; currency: string; created_at: string; updated_at: string }>;
   audit_logs: Table<{ id: string; actor_id: string | null; table_name: string; record_id: string; action: string; created_at: string }>;

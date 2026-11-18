@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { expenseFormSchema, expenseSettlementFormSchema, financialCancellationSchema, financialReversalSchema, moneyToCents, paymentFormSchema, revenueFormSchema } from '../src/features/finances/schema.ts';
+import { expenseCategoryFormSchema, expenseFormSchema, expenseSettlementFormSchema, financialCancellationSchema, financialReversalSchema, moneyToCents, paymentFormSchema, revenueFormSchema } from '../src/features/finances/schema.ts';
 
 const revenue = { description: 'Atendimento', amount: '300,00', serviceDate: '2026-11-15', dueDate: '2026-11-15', clientId: '', procedureId: '', initialPayment: '100,00', paymentMethod: 'pix', paidAt: '2026-11-15' };
 const expense = { description: 'Material', category: 'Insumos', amount: '50,00', competenceDate: '2026-11-01', dueDate: '2026-11-10', responsibility: 'individual', status: 'pending', paidAt: '', paymentMethod: '', notes: '' };
@@ -52,4 +52,9 @@ test('estorno exige tipo operacional, data e justificativa', () => {
   assert.equal(financialReversalSchema.safeParse({ ...reversal, reversalType: 'refund' }).success, true);
   assert.equal(financialReversalSchema.safeParse({ ...reversal, reversalType: 'other' }).success, false);
   assert.equal(financialReversalSchema.safeParse({ ...reversal, reason: 'x' }).success, false);
+});
+
+test('categoria administrável exige nome válido', () => {
+  assert.equal(expenseCategoryFormSchema.safeParse({ name: 'Insumos' }).success, true);
+  assert.equal(expenseCategoryFormSchema.safeParse({ name: 'x' }).success, false);
 });

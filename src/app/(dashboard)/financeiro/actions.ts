@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { requireMember } from '@/features/auth/data-access';
-import { expenseFormSchema, expenseSettlementFormSchema, financialCancellationSchema, financialReopenSchema, financialReversalSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseFormValues, type ExpenseSettlementFormValues, type FinancialCancellationValues, type FinancialReopenValues, type FinancialReversalValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
+import { expenseCategoryFormSchema, expenseFormSchema, expenseSettlementFormSchema, financialCancellationSchema, financialReopenSchema, financialReversalSchema, moneyToCents, paymentFormSchema, revenueFormSchema, type ExpenseCategoryFormValues, type ExpenseFormValues, type ExpenseSettlementFormValues, type FinancialCancellationValues, type FinancialReopenValues, type FinancialReversalValues, type PaymentFormValues, type RevenueFormValues } from '@/features/finances/schema';
 
 type FinancialActionResult<T> = { ok: boolean; message: string; fieldErrors?: Partial<Record<keyof T, string>> };
 
@@ -42,9 +42,12 @@ export async function registerExpense(input: ExpenseFormValues): Promise<Financi
   if (!parsed.success) return validationFailure(parsed.error);
   const { supabase, professional } = await requireMember();
   const values = parsed.data;
+  const { data: category } = await supabase.from('expense_categories').select('id').eq('name', values.category).eq('active', true).maybeSingle();
+  if (!category) return { ok: false, message: 'Selecione uma categoria ativa.' };
   const { error } = await supabase.from('expenses').insert({
     description: values.description,
     category: values.category,
+    category_id: category.id,
     amount_cents: moneyToCents(values.amount),
     competence_date: values.competenceDate,
     due_date: values.dueDate,
@@ -58,6 +61,25 @@ export async function registerExpense(input: ExpenseFormValues): Promise<Financi
   if (error) return { ok: false, message: 'Não foi possível registrar o gasto. Verifique os dados e tente novamente.' };
   revalidatePath('/financeiro');
   return { ok: true, message: 'Gasto registrado com segurança.' };
+}
+
+export async function createExpenseCategory(input: ExpenseCategoryFormValues): Promise<FinancialActionResult<ExpenseCategoryFormValues>> {
+  const parsed = expenseCategoryFormSchema.safeParse(input);
+  if (!parsed.success) return validationFailure(parsed.error);
+  const { supabase } = await requireMember();
+  const { error } = await supabase.from('expense_categories').insert({ name: parsed.data.name });
+  if (error) return { ok: false, message: 'Não foi possível criar a categoria. Verifique se ela já existe.' };
+  revalidatePath('/financeiro');
+  return { ok: true, message: 'Categoria criada.' };
+}
+
+export async function setExpenseCategoryActive(id: string, active: boolean) {
+  if (!z.string().uuid().safeParse(id).success) return { ok: false, message: 'Categoria inválida.' };
+  const { supabase } = await requireMember();
+  const { error } = await supabase.from('expense_categories').update({ active }).eq('id', id);
+  if (error) return { ok: false, message: 'Não foi possível alterar a categoria.' };
+  revalidatePath('/financeiro');
+  return { ok: true, message: active ? 'Categoria reativada.' : 'Categoria desativada.' };
 }
 
 export async function registerPayment(input: PaymentFormValues): Promise<FinancialActionResult<PaymentFormValues>> {
