@@ -17,7 +17,10 @@ export type FinancialDashboardPayload = {
   reversibleEntries: ReversibleEntry[];
   reopenableEntries: Array<{ id: string; entry_type: 'receivable' | 'expense'; description: string }>;
   expenseCategories: Array<{ id: string; name: string; active: boolean }>;
+  expenseRecurrences: ExpenseRecurrenceRow[];
 };
+
+export type ExpenseRecurrenceRow = { id: string; description: string; categoryId: string; amountCents: number; responsibility: 'individual' | 'shared'; active: boolean; nextOccurrenceDate: string };
 
 export type CashReversalRow = { id: string; target_type: 'receivable' | 'expense'; target_id: string; amount_cents: number; effective_date: string; reversal_type: string; description: string; professional_id: string | null; responsibility: string | null; expense_professional_id: string | null };
 export type ReversibleEntry = { id: string; entry_type: 'receivable' | 'expense'; description: string; amount_cents: number };
@@ -66,6 +69,7 @@ export type FinancialDashboardViewModel = {
   reversibleEntries: ReversibleEntry[];
   reopenableEntries: Array<{ id: string; entry_type: 'receivable' | 'expense'; description: string }>;
   expenseCategories: Array<{ id: string; name: string; active: boolean }>;
+  expenseRecurrences: ExpenseRecurrenceRow[];
 };
 
 const sum = <T,>(items: T[], getter: (item: T) => number) => items.reduce((total, item) => total + getter(item), 0);
@@ -180,5 +184,6 @@ export function buildFinancialDashboard(
     reversibleEntries: payload.reversibleEntries,
     reopenableEntries: payload.reopenableEntries,
     expenseCategories: payload.expenseCategories,
+    expenseRecurrences: payload.expenseRecurrences,
   };
 }

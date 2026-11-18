@@ -30,8 +30,8 @@ Os testes locais não substituem a validação do Supabase Auth hospedado. Antes
 
 ## Implementado e próximos módulos
 
-Implementado: autenticação privada por Supabase, autorização no servidor, RLS, perfis profissionais, cadastro compartilhado de clientes, catálogo de procedimentos isolado por profissional e dashboard financeiro mensal. O financeiro separa faturado/recebido, competência/caixa, pagamentos parciais, gastos individuais/compartilhados e resultado gerencial estimado. Há auditoria das alterações críticas e testes das políticas do banco.
+Implementado: autenticação privada por Supabase, autorização no servidor, RLS, perfis profissionais, cadastro compartilhado de clientes, catálogo de procedimentos isolado por profissional e dashboard financeiro mensal. O financeiro separa lançamentos pendentes/concluídos, pagamentos parciais, gastos individuais/compartilhados, categorias administráveis, recorrência mensal, estornos, CSV e resultado gerencial estimado. Há auditoria das alterações críticas e testes das políticas do banco.
 
-Ainda não implementado: agenda e atendimentos, complementos financeiros como recorrência, estorno e edição documentada, relatórios CSV, retornos, distribuição de lucros e backup automatizado. O dashboard exibe somente dados reais cadastrados; não há métricas simuladas.
+Ainda não implementado: agenda e atendimentos, edição financeira documentada, conciliações adicionais, relatórios detalhados, retornos, distribuição de lucros e backup automatizado. O dashboard exibe somente dados reais cadastrados; não há métricas simuladas.
 
 Veja [arquitetura e plano](docs/arquitetura.md) e [publicação e backup](docs/operacao.md).

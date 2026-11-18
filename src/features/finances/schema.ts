@@ -9,39 +9,40 @@ const money = (label: string, allowZero = false) => z.string().trim().regex(mone
 export const revenueFormSchema = z.object({
   description: z.string().trim().min(2, 'Informe a descrição.').max(180),
   amount: money('Valor'),
-  serviceDate: z.string().regex(datePattern, 'Informe a data do atendimento.'),
-  dueDate: z.string().regex(datePattern, 'Informe o vencimento.'),
+  launchDate: z.string().regex(datePattern, 'Informe a data do lançamento.'),
   clientId: z.union([z.literal(''), z.uuid()]),
   procedureId: z.union([z.literal(''), z.uuid()]),
-  initialPayment: money('Valor recebido', true),
+  status: z.enum(['pending', 'received']),
   paymentMethod: z.union([z.literal(''), z.enum(paymentMethods)]),
-  paidAt: z.string().refine((value) => value === '' || datePattern.test(value), 'Informe a data do recebimento.'),
 }).superRefine((value, ctx) => {
-  const total = moneyToCents(value.amount);
-  const paid = moneyToCents(value.initialPayment);
-  if (paid > total) ctx.addIssue({ code: 'custom', path: ['initialPayment'], message: 'O recebido não pode superar o valor total.' });
-  if (paid > 0 && !value.paymentMethod) ctx.addIssue({ code: 'custom', path: ['paymentMethod'], message: 'Informe a forma de pagamento.' });
-  if (paid > 0 && !value.paidAt) ctx.addIssue({ code: 'custom', path: ['paidAt'], message: 'Informe a data do recebimento.' });
+  if (value.status === 'received' && !value.paymentMethod) ctx.addIssue({ code: 'custom', path: ['paymentMethod'], message: 'Informe a forma de pagamento.' });
 });
 
 export const expenseFormSchema = z.object({
   description: z.string().trim().min(2, 'Informe a descrição.').max(180),
   category: z.string().trim().min(2, 'Informe a categoria.').max(80),
   amount: money('Valor'),
-  competenceDate: z.string().regex(datePattern, 'Informe a competência.'),
-  dueDate: z.string().regex(datePattern, 'Informe o vencimento.'),
+  launchDate: z.string().regex(datePattern, 'Informe a data do lançamento.'),
   responsibility: z.enum(['individual', 'shared']),
-  status: z.enum(['planned', 'pending', 'paid']),
-  paidAt: z.string().refine((value) => value === '' || datePattern.test(value), 'Informe a data do pagamento.'),
+  status: z.enum(['pending', 'paid']),
   paymentMethod: z.union([z.literal(''), z.enum(paymentMethods)]),
   notes: z.string().trim().max(500),
+  recurring: z.boolean(),
 }).superRefine((value, ctx) => {
-  if (value.status === 'paid' && !value.paidAt) ctx.addIssue({ code: 'custom', path: ['paidAt'], message: 'Informe a data do pagamento.' });
   if (value.status === 'paid' && !value.paymentMethod) ctx.addIssue({ code: 'custom', path: ['paymentMethod'], message: 'Informe a forma de pagamento.' });
 });
 
 export const expenseCategoryFormSchema = z.object({ name: z.string().trim().min(2, 'Informe o nome da categoria.').max(80) });
 export type ExpenseCategoryFormValues = z.infer<typeof expenseCategoryFormSchema>;
+
+export const expenseRecurrenceFormSchema = z.object({
+  id: z.uuid(),
+  description: z.string().trim().min(2, 'Informe a descrição.').max(180),
+  categoryId: z.uuid('Selecione a categoria.'),
+  amount: money('Valor'),
+  responsibility: z.enum(['individual', 'shared']),
+});
+export type ExpenseRecurrenceFormValues = z.infer<typeof expenseRecurrenceFormSchema>;
 
 export const paymentFormSchema = z.object({
   receivableId: z.uuid('Selecione uma conta a receber.'),

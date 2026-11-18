@@ -34,9 +34,9 @@ UUIDs, referências, constraints, índices, UTC via timestamptz e atualização 
 
 Fase 2 parcial: `clients` compartilhados e preferências de contato estão implementados. Permanecem `appointments`, `appointment_status_history` e `service_records`. O futuro agendamento referenciará procedimento e profissional com integridade composta, impedirá conflitos por profissional/sala no banco e separará ocupação compartilhável de dados pessoais e notas privadas.
 
-Fase financeira em andamento: `receivables`, `payments` e `expenses` estão implementados. Recebível não é pagamento; pagamentos parciais são transações relacionadas e não duplicam faturamento. O dashboard consolida caixa/competência e gastos individuais/compartilhados. Permanecem categorias administráveis, recorrência, edição financeira documentada, estorno e conciliações adicionais.
+Fase financeira em andamento: `receivables`, `payments`, `expenses` e `expense_recurrences` estão implementados. Recebível não é pagamento; pagamentos parciais são transações relacionadas e não duplicam o ganho. A interface usa uma única data de lançamento e situação pendente/concluída; internamente, o histórico mantém as datas necessárias para os relatórios. Recorrências mensais podem ser alteradas ou encerradas sem modificar ocorrências anteriores. Permanecem edição financeira documentada e conciliações adicionais.
 
-Dashboard financeiro: indicadores e gráficos mensais reais por caixa/competência estão implementados. Permanecem relatórios detalhados e CSV seguro.
+Dashboard financeiro: indicadores e gráficos mensais reais por lançamentos/realizados e CSV seguro estão implementados. Permanecem relatórios detalhados.
 
 A leitura mensal do Financeiro é consolidada por `get_financial_dashboard`: uma única chamada retorna somente as colunas necessárias de recebíveis, pagamentos, despesas, clientes, procedimentos e profissionais. A função respeita a sessão e as políticas RLS; `src/features/finances/data-access.ts` valida o contrato retornado e `dashboard.ts` calcula o modelo de apresentação sem depender de React ou Supabase.
 
