@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownRight,
-  ArrowUpRight,
   CalendarRange,
   CircleDollarSign,
   Clock3,
@@ -37,6 +36,8 @@ import { FinancialReversalPanel } from "./financial-reversal-panel";
 import { ExpenseCategoryManager } from "./expense-category-manager";
 import { ExpenseRecurrenceManager } from "./expense-recurrence-manager";
 import { DeferredFinancialCharts } from "./deferred-financial-charts";
+
+import { FinancialHistory } from "./financial-history";
 
 type Option = { id: string; name: string };
 export function FinancialDashboard({
@@ -197,58 +198,7 @@ export function FinancialDashboard({
         professionals={data.professionals}
         regime={regime}
       />
-      <section className="transactions-card">
-        <div className="chart-heading">
-          <div>
-            <span className="overline">MOVIMENTAÇÕES</span>
-            <h2>Registros do período</h2>
-          </div>
-          <span>{data.transactions.length} lançamentos</span>
-        </div>
-        {data.transactions.length ? (
-          <div className="transaction-list">
-            {data.transactions.map((item) => (
-              <div className="transaction-row" key={`${item.type}-${item.id}`}>
-                <span
-                  className={`transaction-icon ${item.type === "expense" ? "out" : ""}`}
-                >
-                  {item.type === "expense" ? (
-                    <ArrowDownRight size={17} />
-                  ) : (
-                    <ArrowUpRight size={17} />
-                  )}
-                </span>
-                <div>
-                  <strong>{item.description}</strong>
-                  <small>
-                    {item.professional} ·{" "}
-                    {new Intl.DateTimeFormat("pt-BR", {
-                      timeZone: "UTC",
-                    }).format(new Date(`${item.date}T00:00:00Z`))}
-                  </small>
-                </div>
-                <span className="transaction-status">{item.status}</span>
-                <b className={item.type === "expense" ? "negative" : ""}>
-                  {item.type === "reversal"
-                    ? "↩ "
-                    : item.type === "expense"
-                      ? "- "
-                      : "+ "}
-                  {formatMoney(
-                    item.type === "reversal"
-                      ? Math.abs(item.amount)
-                      : item.amount,
-                  )}
-                </b>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="transactions-empty">
-            Nenhuma movimentação neste período.
-          </div>
-        )}
-      </section>
+      <FinancialHistory key={`${month}-${regime}`} items={data.transactions} />
 
       {modal && (
         <FinancialEntryModal
