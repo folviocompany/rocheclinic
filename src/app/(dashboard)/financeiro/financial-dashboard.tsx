@@ -40,6 +40,7 @@ import { DeferredFinancialCharts } from "./deferred-financial-charts";
 import { FinancialHistory } from "./financial-history";
 import {
   financialPeriod,
+  machinePeriodValue,
   type FinancialPeriod,
 } from "@/features/finances/period";
 
@@ -104,101 +105,113 @@ export function FinancialDashboard({
     regime === "cash" ? data.metrics.cashResult : data.metrics.competenceResult;
   return (
     <>
-      <div className="finance-export">
-        <Button asChild variant="outline">
-          <a href={`/financeiro/exportar?${query(period.value, regime)}`}>
-            <Download size={17} /> Exportar CSV
-          </a>
-        </Button>
-      </div>
       {navigating && (
-        <p role="status">
+        <p role="status" className="finance-updating">
           <LoaderCircle size={16} className="spin" /> Atualizando período…
         </p>
       )}
-      <div className="finance-filters" aria-busy={navigating}>
-        <label>
-          Período
-          <select
-            value={period.kind}
-            onChange={(event) => {
-              const kind = event.target.value as FinancialPeriod["kind"];
-              changeFilters(
-                kind === "year"
-                  ? period.start.slice(0, 4)
-                  : kind === "month"
-                    ? period.start.slice(0, 7)
-                    : period.start,
-                regime,
-                kind,
-              );
-            }}
-          >
-            <option value="day">Dia</option>
-            <option value="month">Mês</option>
-            <option value="year">Ano</option>
-          </select>
-        </label>
-        <label>
-          Visão
-          <select
-            value={scope}
-            onChange={(event) =>
-              changeFilters(
-                period.value,
-                regime,
-                period.kind,
-                event.target.value,
-              )
-            }
-          >
-            <option value="all">Consolidado</option>
-            <option value="clinic">Clínica — gastos compartilhados</option>
-            {professionalOptions.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <CalendarRange size={17} />
-          <input
-            type={
-              period.kind === "day"
-                ? "date"
-                : period.kind === "year"
-                  ? "number"
-                  : "month"
-            }
-            value={period.value}
-            onChange={(event) => changeFilters(event.target.value, regime)}
-            aria-label="Data de referência"
-          />
-        </label>
-        <div className="regime-toggle">
-          <button
-            className={regime === "competence" ? "selected" : ""}
-            onClick={() => changeFilters(period.value, "competence")}
-          >
-            Lançamentos
-          </button>
-          <button
-            className={regime === "cash" ? "selected" : ""}
-            onClick={() => changeFilters(period.value, "cash")}
-          >
-            Realizados
-          </button>
+      <section className="finance-controls" aria-busy={navigating}>
+        <div className="finance-control-grid">
+          <div className="finance-control-group">
+            <span className="finance-control-label">Consultar por</span>
+            <div
+              className="period-toggle"
+              role="group"
+              aria-label="Período da consulta"
+            >
+              {(["day", "month", "year"] as const).map((kind) => (
+                <button
+                  type="button"
+                  key={kind}
+                  className={period.kind === kind ? "selected" : ""}
+                  aria-pressed={period.kind === kind}
+                  onClick={() =>
+                    changeFilters(machinePeriodValue(kind), regime, kind)
+                  }
+                >
+                  {kind === "day" ? "Dia" : kind === "month" ? "Mês" : "Ano"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="finance-control-field">
+            <span className="finance-control-label">Data de referência</span>
+            <span className="finance-input-shell">
+              <CalendarRange size={17} />
+              <input
+                type={
+                  period.kind === "day"
+                    ? "date"
+                    : period.kind === "year"
+                      ? "number"
+                      : "month"
+                }
+                min={period.kind === "year" ? 2000 : undefined}
+                max={period.kind === "year" ? 2100 : undefined}
+                value={period.value}
+                onChange={(event) => changeFilters(event.target.value, regime)}
+                aria-label="Data de referência"
+              />
+            </span>
+          </label>
+          <label className="finance-control-field finance-scope-field">
+            <span className="finance-control-label">Separar resultados</span>
+            <select
+              value={scope}
+              onChange={(event) =>
+                changeFilters(
+                  period.value,
+                  regime,
+                  period.kind,
+                  event.target.value,
+                )
+              }
+            >
+              <option value="all">Visão consolidada</option>
+              <option value="clinic">Clínica · gastos compartilhados</option>
+              {professionalOptions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-        <div className="finance-quick-actions">
-          <Button variant="outline" onClick={() => openModal("expense")}>
-            <ArrowDownRight size={17} /> Registrar gasto
-          </Button>
-          <Button onClick={() => openModal("revenue")}>
-            <Plus size={17} /> Registrar ganho
-          </Button>
+        <div className="finance-control-footer">
+          <div className="finance-control-group">
+            <span className="finance-control-label">Mostrar valores</span>
+            <div className="regime-toggle">
+              <button
+                type="button"
+                className={regime === "competence" ? "selected" : ""}
+                onClick={() => changeFilters(period.value, "competence")}
+              >
+                Lançamentos
+              </button>
+              <button
+                type="button"
+                className={regime === "cash" ? "selected" : ""}
+                onClick={() => changeFilters(period.value, "cash")}
+              >
+                Realizados
+              </button>
+            </div>
+          </div>
+          <div className="finance-quick-actions">
+            <Button asChild variant="outline">
+              <a href={`/financeiro/exportar?${query(period.value, regime)}`}>
+                <Download size={17} /> Exportar CSV
+              </a>
+            </Button>
+            <Button variant="outline" onClick={() => openModal("expense")}>
+              <ArrowDownRight size={17} /> Registrar gasto
+            </Button>
+            <Button onClick={() => openModal("revenue")}>
+              <Plus size={17} /> Registrar ganho
+            </Button>
+          </div>
         </div>
-      </div>
+      </section>
       {notice && (
         <p
           className={`alert ${notice.kind === "error" ? "error" : "success"}`}
