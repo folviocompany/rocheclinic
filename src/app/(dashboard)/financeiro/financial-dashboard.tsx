@@ -38,6 +38,10 @@ import { ExpenseRecurrenceManager } from "./expense-recurrence-manager";
 import { DeferredFinancialCharts } from "./deferred-financial-charts";
 
 import { FinancialHistory } from "./financial-history";
+import {
+  financialPeriod,
+  type FinancialPeriod,
+} from "@/features/finances/period";
 
 type Option = { id: string; name: string };
 export function FinancialDashboard({
@@ -46,12 +50,18 @@ export function FinancialDashboard({
   regime,
   clients,
   procedures,
+  period,
+  scope,
+  professionalOptions,
 }: {
   data: FinancialDashboardViewModel;
   month: string;
   regime: "competence" | "cash";
   clients: Option[];
   procedures: Option[];
+  period: FinancialPeriod;
+  scope: string;
+  professionalOptions: Option[];
 }) {
   const router = useRouter();
   const [modal, setModal] = useState<"revenue" | "expense" | null>(null);
@@ -60,11 +70,28 @@ export function FinancialDashboard({
     text: string;
   } | null>(null);
   const [navigating, startNavigation] = useTransition();
-  function changeFilters(nextMonth: string, nextRegime: string) {
-    if (!/^\d{4}-\d{2}$/.test(nextMonth)) return;
+  const query = (
+    value: string,
+    regimeValue: string,
+    kind = period.kind,
+    selectedScope = scope,
+  ) =>
+    new URLSearchParams({
+      period: value,
+      kind,
+      regime: regimeValue,
+      scope: selectedScope,
+    }).toString();
+  function changeFilters(
+    value: string,
+    nextRegime: string,
+    kind = period.kind,
+    selectedScope = scope,
+  ) {
+    if (!financialPeriod(kind, value)) return;
     startNavigation(() =>
       router.push(
-        `/financeiro?month=${encodeURIComponent(nextMonth)}&regime=${nextRegime}`,
+        `/financeiro?${query(value, nextRegime, kind, selectedScope)}`,
         { scroll: false },
       ),
     );
@@ -79,9 +106,7 @@ export function FinancialDashboard({
     <>
       <div className="finance-export">
         <Button asChild variant="outline">
-          <a
-            href={`/financeiro/exportar?month=${encodeURIComponent(month)}&regime=${regime}`}
-          >
+          <a href={`/financeiro/exportar?${query(period.value, regime)}`}>
             <Download size={17} /> Exportar CSV
           </a>
         </Button>
@@ -93,24 +118,74 @@ export function FinancialDashboard({
       )}
       <div className="finance-filters" aria-busy={navigating}>
         <label>
+          Período
+          <select
+            value={period.kind}
+            onChange={(event) => {
+              const kind = event.target.value as FinancialPeriod["kind"];
+              changeFilters(
+                kind === "year"
+                  ? period.start.slice(0, 4)
+                  : kind === "month"
+                    ? period.start.slice(0, 7)
+                    : period.start,
+                regime,
+                kind,
+              );
+            }}
+          >
+            <option value="day">Dia</option>
+            <option value="month">Mês</option>
+            <option value="year">Ano</option>
+          </select>
+        </label>
+        <label>
+          Visão
+          <select
+            value={scope}
+            onChange={(event) =>
+              changeFilters(
+                period.value,
+                regime,
+                period.kind,
+                event.target.value,
+              )
+            }
+          >
+            <option value="all">Consolidado</option>
+            <option value="clinic">Clínica — gastos compartilhados</option>
+            {professionalOptions.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
           <CalendarRange size={17} />
           <input
-            type="month"
-            value={month}
+            type={
+              period.kind === "day"
+                ? "date"
+                : period.kind === "year"
+                  ? "number"
+                  : "month"
+            }
+            value={period.value}
             onChange={(event) => changeFilters(event.target.value, regime)}
-            aria-label="Mês de referência"
+            aria-label="Data de referência"
           />
         </label>
         <div className="regime-toggle">
           <button
             className={regime === "competence" ? "selected" : ""}
-            onClick={() => changeFilters(month, "competence")}
+            onClick={() => changeFilters(period.value, "competence")}
           >
             Lançamentos
           </button>
           <button
             className={regime === "cash" ? "selected" : ""}
-            onClick={() => changeFilters(month, "cash")}
+            onClick={() => changeFilters(period.value, "cash")}
           >
             Realizados
           </button>
@@ -182,6 +257,11 @@ export function FinancialDashboard({
         Resultado gerencial estimado. Não representa lucro contábil ou valor
         automaticamente disponível para distribuição.
       </p>
+      <p className="muted small">
+        Gastos compartilhados permanecem na Clínica, sem rateio. As contas e
+        ações abaixo pertencem ao seu acesso e incluem pendências de outros
+        períodos.
+      </p>
       <AccountsReceivablePanel items={data.openReceivables} />
       <AccountsPayablePanel items={data.openExpenses} />
       <FinancialReversalPanel
@@ -198,12 +278,16 @@ export function FinancialDashboard({
         professionals={data.professionals}
         regime={regime}
       />
-      <FinancialHistory key={`${month}-${regime}`} items={data.transactions} />
+      <FinancialHistory
+        key={`${period.kind}-${period.value}-${scope}-${regime}`}
+        items={data.transactions}
+      />
 
       {modal && (
         <FinancialEntryModal
           modal={modal}
           month={month}
+          launchDate={period.start}
           clients={clients}
           procedures={procedures}
           categories={data.expenseCategories}

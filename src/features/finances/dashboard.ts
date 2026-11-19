@@ -78,6 +78,7 @@ export function buildFinancialDashboard(
   payload: FinancialDashboardPayload,
   regime: FinancialRegime,
   periodEnd: string,
+  periodKind: 'day' | 'month' | 'year' = 'month',
 ): FinancialDashboardViewModel {
   const paidByReceivable = new Map<string, number>();
   for (const payment of payload.periodPayments) {
@@ -90,23 +91,24 @@ export function buildFinancialDashboard(
   const expensesIncurred = sum(payload.expenses, (item) => item.amount_cents);
   const expensesPaid = sum(payload.paidExpenses, (item) => item.amount_cents) - sum(payload.cashReversals.filter((item) => item.target_type === 'expense'), (item) => item.amount_cents);
 
-  const dayCount = Number(periodEnd.slice(-2));
+  const dayCount = periodKind === 'year' ? 12 : periodKind === 'day' ? 1 : Number(periodEnd.slice(-2));
+  const bucket = (date: string) => periodKind === 'year' ? Number(date.slice(5,7)) - 1 : periodKind === 'day' ? 0 : Number(date.slice(-2)) - 1;
   const daily = Array.from({ length: dayCount }, (_, index) => ({
-    label: String(index + 1).padStart(2, '0'),
+    label: periodKind === 'day' ? periodEnd.slice(8,10) : String(index + 1).padStart(2, '0'),
     revenue: 0,
     expense: 0,
   }));
 
   if (regime === 'competence') {
-    for (const item of payload.receivables) daily[Number(item.service_date.slice(-2)) - 1].revenue += item.amount_cents;
-    for (const item of payload.expenses) daily[Number(item.competence_date.slice(-2)) - 1].expense += item.amount_cents;
+    for (const item of payload.receivables) daily[bucket(item.service_date)].revenue += item.amount_cents;
+    for (const item of payload.expenses) daily[bucket(item.competence_date)].expense += item.amount_cents;
   } else {
-    for (const item of payload.cashPayments) daily[Number(item.paid_at.slice(-2)) - 1].revenue += item.amount_cents;
+    for (const item of payload.cashPayments) daily[bucket(item.paid_at)].revenue += item.amount_cents;
     for (const item of payload.paidExpenses) {
-      if (item.paid_at) daily[Number(item.paid_at.slice(-2)) - 1].expense += item.amount_cents;
+      if (item.paid_at) daily[bucket(item.paid_at)].expense += item.amount_cents;
     }
     for (const item of payload.cashReversals) {
-      const day = Number(item.effective_date.slice(-2)) - 1;
+      const day = bucket(item.effective_date);
       if (item.target_type === 'receivable') daily[day].revenue -= item.amount_cents;
       else daily[day].expense -= item.amount_cents;
     }
