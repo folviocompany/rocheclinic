@@ -93,6 +93,23 @@ test('contas a receber e a pagar compartilham os mesmos componentes visuais', as
   assert.match(shared, /export function FinancialField/);
 });
 
+test('clientes são filtradas e paginadas no banco sem carregar o formulário pesado', async () => {
+  const [page, repository, manager] = await Promise.all([
+    source('src/app/(dashboard)/clientes/page.tsx'),
+    source('src/features/clients/data-access.ts'),
+    source('src/app/(dashboard)/clientes/client-manager.tsx'),
+  ]);
+
+  assert.match(page, /searchParams/);
+  assert.match(page, /getClientsPage/);
+  assert.doesNotMatch(page, /from\(['"]clients['"]\)\.select\(['"]\*['"]\)/);
+  assert.match(repository, /\.range\(/);
+  assert.match(repository, /count:\s*['"]exact['"]/);
+  assert.match(manager, /dynamic\([\s\S]*import\(['"]\.\/client-form-modal['"]\)/);
+  assert.doesNotMatch(manager, /react-hook-form|zodResolver/);
+  assert.doesNotMatch(manager, /features\/clients\/schema/);
+});
+
 test('exportação CSV usa a leitura consolidada e exige a camada autenticada', async () => {
   const route = await source('src/app/(dashboard)/financeiro/exportar/route.ts');
   assert.match(route, /getFinancialDashboardData/);
