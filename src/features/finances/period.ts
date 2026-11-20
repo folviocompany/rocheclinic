@@ -52,3 +52,14 @@ export function currentMonth() {
   }).formatToParts(new Date());
   return `${parts.find((p) => p.type === "year")!.value}-${parts.find((p) => p.type === "month")!.value}`;
 }
+
+export function machinePeriodValue(kind: PeriodKind, date = new Date()) {
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return kind === "year"
+    ? year
+    : kind === "month"
+      ? `${year}-${month}`
+      : `${year}-${month}-${day}`;
+}
