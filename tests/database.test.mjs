@@ -30,6 +30,7 @@ before(async () => {
   await db.exec(await readFile(new URL('../supabase/migrations/202611170003_financial_reversals.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611170004_expense_categories.sql', import.meta.url), 'utf8'));
   await db.exec(await readFile(new URL('../supabase/migrations/202611180001_expense_recurrences.sql', import.meta.url), 'utf8'));
+  await db.exec(await readFile(new URL('../supabase/migrations/202611220001_repair_payable_actions.sql', import.meta.url), 'utf8'));
   await db.query('insert into auth.users (id) values ($1), ($2), ($3)', [ester, izabela, outsider]);
   await db.query("insert into profiles (id, display_name) values ($1, 'Profissional A'), ($2, 'Profissional B')", [ester, izabela]);
   await db.query("insert into professionals (id, user_id, specialty) values ($1, $2, 'Área A'), ($3, $4, 'Área B')", [p1, ester, p2, izabela]);

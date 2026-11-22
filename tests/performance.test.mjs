@@ -93,6 +93,20 @@ test('contas a receber e a pagar compartilham os mesmos componentes visuais', as
   assert.match(shared, /export function FinancialField/);
 });
 
+test('gasto pendente separa cancelamento de estorno e usa funções reparadas', async () => {
+  const [payable, reversal, migration] = await Promise.all([
+    source('src/app/(dashboard)/financeiro/accounts-payable-panel.tsx'),
+    source('src/app/(dashboard)/financeiro/financial-reversal-panel.tsx'),
+    source('supabase/migrations/202611220001_repair_payable_actions.sql'),
+  ]);
+
+  assert.match(payable, /secondaryActionLabel=["']Lançamento errado["']/);
+  assert.match(reversal, /Somente valores já recebidos ou pagos/);
+  assert.match(migration, /create or replace function public\.settle_expense[\s\S]*security definer/);
+  assert.match(migration, /create or replace function public\.cancel_expense[\s\S]*security definer/);
+  assert.match(migration, /updated_by\s*=\s*auth\.uid\(\)/);
+});
+
 test('exportação CSV usa a leitura consolidada e exige a camada autenticada', async () => {
   const route = await source('src/app/(dashboard)/financeiro/exportar/route.ts');
   assert.match(route, /getFinancialDashboardData/);

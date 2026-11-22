@@ -52,7 +52,7 @@ export function AccountsPayablePanel({ items }: { items: OpenExpenseRow[] }) {
         values={<><strong>{formatMoney(item.amount_cents)}</strong><span>{item.status === 'planned' ? 'prevista' : 'pendente'}</span></>}
         actionLabel="Registrar pagamento"
         onAction={() => openSettlement(item)}
-        secondaryActionLabel="Cancelar"
+        secondaryActionLabel="Lançamento errado"
         onSecondaryAction={() => setCancellation({ id: item.id, type: 'expense', description: item.description })}
       />)}
     </FinancialAccountPanel>
